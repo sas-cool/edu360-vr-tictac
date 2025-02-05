@@ -112,17 +112,17 @@ const lineMaterial = new THREE.LineBasicMaterial({
     linewidth: 2
 });
 
-// Create highlight material
+// Create highlight material with more obvious color and thickness
 const highlightMaterial = new THREE.LineBasicMaterial({
-    color: 0x00ff00,
-    linewidth: 2,
-    opacity: 0.8,
+    color: 0xffff00, // Bright yellow
+    linewidth: 3,
+    opacity: 1.0,
     transparent: true
 });
 
 // Create collision planes for detection (invisible)
 const collisionPlanes = [];
-const planeGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+const planeGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9); // Slightly smaller than cell
 const invisibleMaterial = new THREE.MeshBasicMaterial({
     visible: false
 });
@@ -132,7 +132,7 @@ for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
         const x = (col - 1) * cellSize;
         const y = (1 - row) * cellSize + 1.6;
-        const z = -2;
+        const z = -1.99; // Slightly in front of grid
 
         // Add invisible collision plane
         const plane = new THREE.Mesh(planeGeometry, invisibleMaterial);
@@ -143,21 +143,40 @@ for (let row = 0; row < 3; row++) {
     }
 }
 
-// Create highlight frame
+// Create highlight frame with double line effect
 const createHighlightFrame = () => {
-    const frameGeometry = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-        -cellSize/2, -cellSize/2, 0,
-        cellSize/2, -cellSize/2, 0,
-        cellSize/2, cellSize/2, 0,
-        -cellSize/2, cellSize/2, 0,
-        -cellSize/2, -cellSize/2, 0
+    // Inner frame
+    const innerGeometry = new THREE.BufferGeometry();
+    const innerVertices = new Float32Array([
+        -cellSize/2.2, -cellSize/2.2, 0,
+        cellSize/2.2, -cellSize/2.2, 0,
+        cellSize/2.2, cellSize/2.2, 0,
+        -cellSize/2.2, cellSize/2.2, 0,
+        -cellSize/2.2, -cellSize/2.2, 0
     ]);
-    frameGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    const frame = new THREE.Line(frameGeometry, highlightMaterial);
-    frame.visible = false;
-    gridGroup.add(frame);
-    return frame;
+    innerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(innerVertices, 3));
+    
+    // Outer frame
+    const outerGeometry = new THREE.BufferGeometry();
+    const outerVertices = new Float32Array([
+        -cellSize/1.8, -cellSize/1.8, 0,
+        cellSize/1.8, -cellSize/1.8, 0,
+        cellSize/1.8, cellSize/1.8, 0,
+        -cellSize/1.8, cellSize/1.8, 0,
+        -cellSize/1.8, -cellSize/1.8, 0
+    ]);
+    outerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(outerVertices, 3));
+    
+    const frameGroup = new THREE.Group();
+    const innerFrame = new THREE.Line(innerGeometry, highlightMaterial);
+    const outerFrame = new THREE.Line(outerGeometry, highlightMaterial);
+    
+    frameGroup.add(innerFrame);
+    frameGroup.add(outerFrame);
+    frameGroup.visible = false;
+    frameGroup.position.z = -1.98; // Slightly in front of collision planes
+    gridGroup.add(frameGroup);
+    return frameGroup;
 };
 
 const highlightFrame = createHighlightFrame();
@@ -228,10 +247,14 @@ function animate() {
             if (currentIntersect !== intersect.object) {
                 currentIntersect = intersect.object;
                 // Position highlight frame
-                highlightFrame.position.copy(intersect.object.position);
+                highlightFrame.position.x = intersect.object.position.x;
+                highlightFrame.position.y = intersect.object.position.y;
                 highlightFrame.visible = true;
-                // Pulse highlight
-                highlightFrame.material.opacity = 0.5 + Math.sin(time * 4) * 0.3;
+                
+                // Strong pulsing effect
+                highlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
+                
+                console.log('Highlighting cell:', intersect.object.userData.row, intersect.object.userData.col);
             }
         } else {
             if (currentIntersect) {
