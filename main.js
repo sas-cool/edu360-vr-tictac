@@ -26,33 +26,122 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
 directionalLight.position.set(0, 5, 5);
 scene.add(directionalLight);
 
-// Create 3D Tic Tac Toe grid
+// Create 3D Tic Tac Toe grid with cells
 const gridGroup = new THREE.Group();
-const lineColor = 0x00ff00;
-const lineWidth = 0.03;
+const cellSize = 0.8;
+const gap = 0.1;
+const totalSize = (cellSize * 3) + (gap * 2);
+const lineWidth = 0.05;
+const lineDepth = 0.1;
 
-// Create grid lines
-for (let i = -1; i <= 1; i++) {
-    // Vertical lines
-    const verticalGeometry = new THREE.BoxGeometry(lineWidth, 3, lineWidth);
-    const verticalLine = new THREE.Mesh(
-        verticalGeometry,
-        new THREE.MeshStandardMaterial({ color: lineColor })
-    );
-    verticalLine.position.set(i, 1.5, 0);
-    gridGroup.add(verticalLine);
+// Materials
+const lineMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x00ff00,
+    metalness: 0.5,
+    roughness: 0.5,
+    emissive: 0x002200
+});
 
-    // Horizontal lines
-    const horizontalGeometry = new THREE.BoxGeometry(3, lineWidth, lineWidth);
-    const horizontalLine = new THREE.Mesh(
-        horizontalGeometry,
-        new THREE.MeshStandardMaterial({ color: lineColor })
-    );
-    horizontalLine.position.set(0, i + 1.5, 0);
-    gridGroup.add(horizontalLine);
+const cellMaterial = new THREE.MeshStandardMaterial({
+    color: 0x004400,
+    metalness: 0.3,
+    roughness: 0.7,
+    transparent: true,
+    opacity: 0.5
+});
+
+const hoverMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00ff00,
+    metalness: 0.5,
+    roughness: 0.3,
+    emissive: 0x00ff00,
+    transparent: true,
+    opacity: 0.7
+});
+
+// Create grid cells
+const cells = [];
+for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+        const cellGeometry = new THREE.BoxGeometry(cellSize, cellSize, lineDepth);
+        const cell = new THREE.Mesh(cellGeometry, cellMaterial);
+        
+        // Position cell
+        const x = (col - 1) * (cellSize + gap);
+        const y = (1 - row) * (cellSize + gap) + 1.5; // Center at eye level
+        cell.position.set(x, y, 0);
+        
+        // Store cell info
+        cell.userData = { row, col, isHovered: false };
+        cells.push(cell);
+        gridGroup.add(cell);
+    }
 }
 
+// Create grid lines with depth
+const createLine = (x, y, width, height, isVertical) => {
+    const geometry = new THREE.BoxGeometry(
+        isVertical ? lineWidth : width,
+        isVertical ? height : lineWidth,
+        lineDepth
+    );
+    const line = new THREE.Mesh(geometry, lineMaterial);
+    line.position.set(x, y + 1.5, 0); // Center at eye level
+    return line;
+};
+
+// Add vertical lines
+const verticalLines = [
+    createLine(-cellSize - gap/2, 0, null, totalSize, true),
+    createLine(cellSize + gap/2, 0, null, totalSize, true)
+];
+
+// Add horizontal lines
+const horizontalLines = [
+    createLine(0, -cellSize - gap/2, totalSize, null, false),
+    createLine(0, cellSize + gap/2, totalSize, null, false)
+];
+
+// Add lines to grid
+[...verticalLines, ...horizontalLines].forEach(line => gridGroup.add(line));
+
+// Add grid to scene
 scene.add(gridGroup);
+
+// Raycaster for interaction
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+// Handle mouse/touch movement
+function onMouseMove(event) {
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Update the picking ray with the camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Calculate objects intersecting the picking ray
+    const intersects = raycaster.intersectObjects(cells);
+    
+    // Reset all cells
+    cells.forEach(cell => {
+        if (cell.userData.isHovered) {
+            cell.material = cellMaterial;
+            cell.userData.isHovered = false;
+        }
+    });
+    
+    // Highlight intersected cell
+    if (intersects.length > 0) {
+        const cell = intersects[0].object;
+        cell.material = hoverMaterial;
+        cell.userData.isHovered = true;
+    }
+}
+
+// Add mouse move listener
+window.addEventListener('mousemove', onMouseMove, false);
 
 // Add floating text
 const loader = new THREE.TextureLoader();
@@ -78,7 +167,9 @@ scene.add(textMesh);
 // Animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
-        gridGroup.rotation.y += 0.001;
+        // Subtle grid movement
+        gridGroup.rotation.y = Math.sin(Date.now() * 0.0005) * 0.1;
+        
         renderer.render(scene, camera);
     });
 }
