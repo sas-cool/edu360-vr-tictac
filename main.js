@@ -35,8 +35,7 @@ const centerButton = document.createElement('button');
 centerButton.textContent = 'Center Grid';
 centerButton.style.position = 'fixed';
 centerButton.style.bottom = '20px';
-centerButton.style.left = '50%';
-centerButton.style.transform = 'translateX(-50%)';
+centerButton.style.right = '20px'; // Position on right side
 centerButton.style.padding = '10px 20px';
 centerButton.style.backgroundColor = '#00ff00';
 centerButton.style.color = 'black';
@@ -44,6 +43,13 @@ centerButton.style.border = 'none';
 centerButton.style.borderRadius = '5px';
 centerButton.style.cursor = 'pointer';
 centerButton.style.zIndex = '999';
+centerButton.style.fontFamily = 'Arial, sans-serif';
+centerButton.style.fontSize = '13px';
+centerButton.style.fontWeight = 'bold';
+
+// Style VR button to ensure it stays on the left
+vrButton.style.left = '20px';
+vrButton.style.right = 'auto';
 
 // Center grid function
 function centerGrid() {
