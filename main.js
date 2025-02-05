@@ -6,7 +6,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x001100); // Very dark green background
 
 // Camera adjustment for VR with better depth precision
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.5, 5);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 2.5);
 
 // Renderer with optimized WebXR settings
@@ -139,13 +139,31 @@ const gridLines = new THREE.LineSegments(geometry, lineMaterial);
 gridGroup.add(gridLines);
 scene.add(gridGroup);
 
+// Create reticle
+const reticleGroup = new THREE.Group();
+const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
+const reticleMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    opacity: 0.8,
+    transparent: true,
+    side: THREE.DoubleSide
+});
+const reticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
+reticle.position.z = -0.5; // Place it half a meter in front of the camera
+reticleGroup.add(reticle);
+camera.add(reticleGroup); // Attach to camera so it moves with view
+scene.add(camera);
+
 // Animation with gentle Y-axis rotation only
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
         
         // Only rotate around Y-axis, very gently
-        gridGroup.rotation.y = Math.sin(time * 0.3) * 0.1; // Gentle left-right rotation
+        gridGroup.rotation.y = Math.sin(time * 0.3) * 0.1;
+        
+        // Pulse the reticle slightly
+        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
         
         renderer.render(scene, camera);
     });
