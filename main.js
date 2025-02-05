@@ -19,10 +19,18 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 
-// Optimize WebXR session settings
-document.body.appendChild(renderer.domElement);
-document.body.appendChild(VRButton.createButton(renderer));
+// Handle VR session start
+renderer.xr.addEventListener('sessionstart', () => {
+    // Position grid in front of user when VR starts
+    gridGroup.position.set(0, 1.6, -1.5);  // Height of average person, closer distance
+});
 
+// Create VR button with position reset
+const vrButton = VRButton.createButton(renderer);
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(vrButton);
+
+// Optimize WebXR session settings
 renderer.xr.setFramebufferScaleFactor(1.0); // Ensure full resolution
 
 // Adjust reference space type for better stability
@@ -79,7 +87,11 @@ scene.add(gridGroup);
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
-        gridGroup.position.y = Math.sin(time * 0.5) * 0.01; // Tiny wobble
+        
+        // Only apply floating animation to Y position
+        const baseY = gridGroup.position.y - Math.sin((time - 0.01) * 0.5) * 0.01;
+        gridGroup.position.y = baseY + Math.sin(time * 0.5) * 0.01;
+        
         renderer.render(scene, camera);
     });
 }
