@@ -83,14 +83,18 @@ const gridLines = new THREE.LineSegments(geometry, lineMaterial);
 gridGroup.add(gridLines);
 scene.add(gridGroup);
 
-// Simple animation
+// Simple animation with gentle wobble
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
         
-        // Only apply floating animation to Y position
-        const baseY = gridGroup.position.y - Math.sin((time - 0.01) * 0.5) * 0.01;
-        gridGroup.position.y = baseY + Math.sin(time * 0.5) * 0.01;
+        // Very gentle vertical float
+        gridGroup.position.y = 1.6 + Math.sin(time * 0.3) * 0.02;
+        
+        // Extremely subtle rotations
+        gridGroup.rotation.x = Math.sin(time * 0.2) * 0.03; // Tilt forward/back
+        gridGroup.rotation.y = Math.sin(time * 0.15) * 0.03; // Turn left/right
+        gridGroup.rotation.z = Math.cos(time * 0.25) * 0.02; // Roll slightly
         
         renderer.render(scene, camera);
     });
