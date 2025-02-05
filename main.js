@@ -112,6 +112,56 @@ const lineMaterial = new THREE.LineBasicMaterial({
     linewidth: 2
 });
 
+// Create highlight material
+const highlightMaterial = new THREE.LineBasicMaterial({
+    color: 0x00ff00,
+    linewidth: 2,
+    opacity: 0.8,
+    transparent: true
+});
+
+// Create collision planes for detection (invisible)
+const collisionPlanes = [];
+const planeGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+const invisibleMaterial = new THREE.MeshBasicMaterial({
+    visible: false
+});
+
+// Create grid cells with collision detection
+for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+        const x = (col - 1) * cellSize;
+        const y = (1 - row) * cellSize + 1.6;
+        const z = -2;
+
+        // Add invisible collision plane
+        const plane = new THREE.Mesh(planeGeometry, invisibleMaterial);
+        plane.position.set(x, y, z);
+        plane.userData = { row, col };
+        collisionPlanes.push(plane);
+        gridGroup.add(plane);
+    }
+}
+
+// Create highlight frame
+const createHighlightFrame = () => {
+    const frameGeometry = new THREE.BufferGeometry();
+    const vertices = new Float32Array([
+        -cellSize/2, -cellSize/2, 0,
+        cellSize/2, -cellSize/2, 0,
+        cellSize/2, cellSize/2, 0,
+        -cellSize/2, cellSize/2, 0,
+        -cellSize/2, -cellSize/2, 0
+    ]);
+    frameGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    const frame = new THREE.Line(frameGeometry, highlightMaterial);
+    frame.visible = false;
+    gridGroup.add(frame);
+    return frame;
+};
+
+const highlightFrame = createHighlightFrame();
+
 // Create vertices for grid lines
 const points = [];
 
@@ -154,7 +204,11 @@ reticleGroup.add(reticle);
 camera.add(reticleGroup); // Attach to camera so it moves with view
 scene.add(camera);
 
-// Animation with gentle Y-axis rotation only
+// Setup raycaster
+const raycaster = new THREE.Raycaster();
+let currentIntersect = null;
+
+// Animation with highlight detection
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
@@ -164,6 +218,27 @@ function animate() {
         
         // Pulse the reticle slightly
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
+        
+        // Update raycaster
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        const intersects = raycaster.intersectObjects(collisionPlanes);
+        
+        if (intersects.length > 0) {
+            const intersect = intersects[0];
+            if (currentIntersect !== intersect.object) {
+                currentIntersect = intersect.object;
+                // Position highlight frame
+                highlightFrame.position.copy(intersect.object.position);
+                highlightFrame.visible = true;
+                // Pulse highlight
+                highlightFrame.material.opacity = 0.5 + Math.sin(time * 4) * 0.3;
+            }
+        } else {
+            if (currentIntersect) {
+                currentIntersect = null;
+                highlightFrame.visible = false;
+            }
+        }
         
         renderer.render(scene, camera);
     });
