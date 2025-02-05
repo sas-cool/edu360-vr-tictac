@@ -21,14 +21,64 @@ renderer.xr.enabled = true;
 
 // Handle VR session start
 renderer.xr.addEventListener('sessionstart', () => {
-    // Position grid in front of user when VR starts
-    gridGroup.position.set(0, 1.6, -1.5);  // Height of average person, closer distance
+    // Initial positioning
+    gridGroup.position.set(0, 1.6, -1.5);
 });
 
-// Create VR button with position reset
+// Create VR button and center button
 const vrButton = VRButton.createButton(renderer);
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(vrButton);
+
+// Add center grid button
+const centerButton = document.createElement('button');
+centerButton.textContent = 'Center Grid';
+centerButton.style.position = 'fixed';
+centerButton.style.bottom = '20px';
+centerButton.style.left = '50%';
+centerButton.style.transform = 'translateX(-50%)';
+centerButton.style.padding = '10px 20px';
+centerButton.style.backgroundColor = '#00ff00';
+centerButton.style.color = 'black';
+centerButton.style.border = 'none';
+centerButton.style.borderRadius = '5px';
+centerButton.style.cursor = 'pointer';
+centerButton.style.zIndex = '999';
+
+// Center grid function
+function centerGrid() {
+    if (renderer.xr.isPresenting) {
+        const session = renderer.xr.getSession();
+        const viewerPose = renderer.xr.getFrame().getViewerPose(renderer.xr.getReferenceSpace());
+        
+        if (viewerPose) {
+            const view = viewerPose.views[0];
+            const viewMatrix = view.transform.matrix;
+            
+            // Extract position and direction from view matrix
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+            
+            // Decompose view matrix
+            new THREE.Matrix4().fromArray(viewMatrix).decompose(position, quaternion, scale);
+            
+            // Position grid 1.5 meters in front of user
+            const forward = new THREE.Vector3(0, 0, -1.5);
+            forward.applyQuaternion(quaternion);
+            
+            // Set grid position
+            gridGroup.position.copy(position).add(forward);
+            gridGroup.position.y = 1.6; // Maintain comfortable height
+            
+            // Make grid face user
+            gridGroup.lookAt(position);
+        }
+    }
+}
+
+centerButton.addEventListener('click', centerGrid);
+document.body.appendChild(centerButton);
 
 // Optimize WebXR session settings
 renderer.xr.setFramebufferScaleFactor(1.0); // Ensure full resolution
@@ -83,18 +133,19 @@ const gridLines = new THREE.LineSegments(geometry, lineMaterial);
 gridGroup.add(gridLines);
 scene.add(gridGroup);
 
-// Simple animation with gentle wobble
+// Animation with grid centering check
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
         
         // Very gentle vertical float
-        gridGroup.position.y = 1.6 + Math.sin(time * 0.3) * 0.02;
+        const baseY = gridGroup.position.y;
+        gridGroup.position.y = baseY + Math.sin(time * 0.3) * 0.02;
         
         // Extremely subtle rotations
-        gridGroup.rotation.x = Math.sin(time * 0.2) * 0.03; // Tilt forward/back
-        gridGroup.rotation.y = Math.sin(time * 0.15) * 0.03; // Turn left/right
-        gridGroup.rotation.z = Math.cos(time * 0.25) * 0.02; // Roll slightly
+        gridGroup.rotation.x = Math.sin(time * 0.2) * 0.03;
+        gridGroup.rotation.y = Math.sin(time * 0.15) * 0.03;
+        gridGroup.rotation.z = Math.cos(time * 0.25) * 0.02;
         
         renderer.render(scene, camera);
     });
