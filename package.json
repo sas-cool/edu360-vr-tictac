@@ -1,0 +1,16 @@
+{
+  "name": "edu360-vr-tictac",
+  "version": "1.0.0",
+  "description": "VR Tic Tac Toe Demo",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx vite"
+  },
+  "dependencies": {
+    "three": "^0.157.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9"
+  }
+}
