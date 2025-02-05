@@ -3,11 +3,11 @@ import { VRButton } from 'three/addons/webxr/VRButton.js';
 
 // Scene setup with better background
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000); // Dark background for better contrast
+scene.background = new THREE.Color(0x001100); // Very dark green background
 
 // Camera adjustment for VR
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 1.6, 2); // Closer to the grid
+camera.position.set(0, 1.6, 2.5); // Slightly further back
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -20,11 +20,11 @@ document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 
 // Enhanced lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Brighter ambient
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Brighter main light
-directionalLight.position.set(0, 5, 5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Full brightness
+directionalLight.position.set(0, 2, 4);
 scene.add(directionalLight);
 
 // Add point lights for better depth perception
@@ -36,29 +36,29 @@ const pointLight2 = new THREE.PointLight(0x00ff00, 0.5);
 pointLight2.position.set(2, -2, 2);
 scene.add(pointLight2);
 
-// Grid constants adjusted for VR
+// Grid constants adjusted for better visibility
 const gridGroup = new THREE.Group();
-const cellSize = 0.4; // Smaller cells
-const gap = 0.05; // Smaller gaps
+const cellSize = 0.6; // Larger cells
+const gap = 0.05;
 const totalSize = (cellSize * 3) + (gap * 2);
-const lineWidth = 0.03;
-const lineDepth = 0.03; // Less depth for better visibility
+const lineWidth = 0.05; // Thicker lines
+const lineDepth = 0.02;
 
-// Improved materials for VR
+// Improved materials for better visibility
 const lineMaterial = new THREE.MeshStandardMaterial({ 
     color: 0x00ff00,
-    metalness: 0.7,
+    metalness: 0.5,
     roughness: 0.2,
-    emissive: 0x002200,
-    emissiveIntensity: 2
+    emissive: 0x00ff00,
+    emissiveIntensity: 0.5
 });
 
 const cellMaterial = new THREE.MeshStandardMaterial({
     color: 0x004400,
-    metalness: 0.5,
-    roughness: 0.5,
+    metalness: 0.3,
+    roughness: 0.7,
     transparent: true,
-    opacity: 0.3
+    opacity: 0.8 // Much more visible
 });
 
 const hoverMaterial = new THREE.MeshStandardMaterial({
@@ -71,22 +71,29 @@ const hoverMaterial = new THREE.MeshStandardMaterial({
     opacity: 0.5
 });
 
-// Create grid cells with better positioning
+// Create grid cells
 const cells = [];
 for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
+        // Create main cell face
         const cellGeometry = new THREE.BoxGeometry(cellSize, cellSize, lineDepth);
         const cell = new THREE.Mesh(cellGeometry, cellMaterial);
         
-        // Adjust position for better VR viewing
+        // Position
         const x = (col - 1) * (cellSize + gap);
-        const y = (1 - row) * (cellSize + gap) + 1.6; // At eye level
-        const z = -1; // Push grid back slightly
+        const y = (1 - row) * (cellSize + gap) + 1.6;
+        const z = -2; // Move grid back
         cell.position.set(x, y, z);
         
         cell.userData = { row, col, isHovered: false };
         cells.push(cell);
         gridGroup.add(cell);
+
+        // Add border frame for each cell
+        const borderGeometry = new THREE.BoxGeometry(cellSize + lineWidth, cellSize + lineWidth, lineDepth);
+        const border = new THREE.Mesh(borderGeometry, lineMaterial);
+        border.position.copy(cell.position);
+        gridGroup.add(border);
     }
 }
 
@@ -98,7 +105,7 @@ const createLine = (x, y, width, height, isVertical) => {
         lineDepth
     );
     const line = new THREE.Mesh(geometry, lineMaterial);
-    line.position.set(x, y + 1.6, -1); // Align with cells
+    line.position.set(x, y + 1.6, -2);
     return line;
 };
 
@@ -176,11 +183,11 @@ const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 textMesh.position.set(0, 3, -2);
 scene.add(textMesh);
 
-// Animation loop with gentler movement
+// Animation loop with minimal movement
 function animate() {
     renderer.setAnimationLoop(() => {
         // Very subtle floating movement
-        gridGroup.position.y = Math.sin(Date.now() * 0.001) * 0.02;
+        gridGroup.position.y = 1.6 + Math.sin(Date.now() * 0.001) * 0.01; // Tiny wobble
         renderer.render(scene, camera);
     });
 }
