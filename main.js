@@ -50,25 +50,25 @@ const lineMaterial = new THREE.MeshStandardMaterial({
     metalness: 0.5,
     roughness: 0.2,
     emissive: 0x00ff00,
-    emissiveIntensity: 0.5
+    emissiveIntensity: 0.5,
+    transparent: false // Force opaque
 });
 
 const cellMaterial = new THREE.MeshStandardMaterial({
-    color: 0x004400,
+    color: 0x004400, // Darker green
     metalness: 0.3,
     roughness: 0.7,
-    transparent: true,
-    opacity: 0.8 // Much more visible
+    transparent: false, // Force opaque
+    depthWrite: true // Ensure proper depth handling
 });
 
 const hoverMaterial = new THREE.MeshStandardMaterial({
     color: 0x00ff00,
-    metalness: 0.8,
-    roughness: 0.2,
+    metalness: 0.5,
+    roughness: 0.3,
     emissive: 0x00ff00,
-    emissiveIntensity: 1,
-    transparent: true,
-    opacity: 0.5
+    emissiveIntensity: 0.3,
+    transparent: false // Force opaque
 });
 
 // Create grid cells
