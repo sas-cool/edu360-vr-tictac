@@ -139,19 +139,13 @@ const gridLines = new THREE.LineSegments(geometry, lineMaterial);
 gridGroup.add(gridLines);
 scene.add(gridGroup);
 
-// Animation with grid centering check
+// Animation with gentle Y-axis rotation only
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
         
-        // Very gentle vertical float
-        const baseY = gridGroup.position.y;
-        gridGroup.position.y = baseY + Math.sin(time * 0.3) * 0.02;
-        
-        // Extremely subtle rotations
-        gridGroup.rotation.x = Math.sin(time * 0.2) * 0.03;
-        gridGroup.rotation.y = Math.sin(time * 0.15) * 0.03;
-        gridGroup.rotation.z = Math.cos(time * 0.25) * 0.02;
+        // Only rotate around Y-axis, very gently
+        gridGroup.rotation.y = Math.sin(time * 0.3) * 0.1; // Gentle left-right rotation
         
         renderer.render(scene, camera);
     });
