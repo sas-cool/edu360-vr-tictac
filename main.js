@@ -15,6 +15,12 @@ scene.background = new THREE.Color(0x001100); // Very dark green background
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 2.5);
 
+// Grid constants
+const cellSize = 0.6;
+const gap = 0.05;
+const totalSize = (cellSize * 3) + (gap * 2);
+const halfSize = totalSize / 2;
+
 // Create grid group
 const gridGroup = new THREE.Group();
 scene.add(gridGroup);
@@ -29,10 +35,7 @@ const gridMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
 
 // Create vertices for grid lines
 const points = [];
-const cellSize = 1;
 const gridSize = 3;
-const totalSize = cellSize * gridSize;
-const halfSize = totalSize / 2;
 
 // Add vertical lines
 for (let i = 0; i <= gridSize; i++) {
@@ -191,11 +194,6 @@ scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Full brightness
 directionalLight.position.set(0, 2, 4);
 scene.add(directionalLight);
-
-// Grid constants
-const cellSize = 0.6;
-const gap = 0.05;
-const totalSize = (cellSize * 3) + (gap * 2);
 
 // Create grid lines using LineSegments
 const lineMaterial = new THREE.LineBasicMaterial({
