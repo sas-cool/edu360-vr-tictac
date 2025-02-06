@@ -343,7 +343,8 @@ function createOptions(options) {
     
     const PANEL_WIDTH = 0.6;  // Slightly smaller panels
     const PANEL_HEIGHT = 0.3;
-    const PANEL_SPACING = 0.1; // Space between panels
+    const PANEL_SPACING = 0.1;
+    const VERTICAL_OFFSET = 0.8; // Distance below grid
     const ROWS = 3;
     const COLS = 3;
     
@@ -371,8 +372,8 @@ function createOptions(options) {
         
         // Position panels in rows below the grid
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
-        const y = -0.3 - (row * (PANEL_HEIGHT + PANEL_SPACING));
-        const z = -1.5;
+        const y = -(VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING));
+        const z = -1.5; // Same depth as grid
         
         panel.position.set(x, y + 1.6, z);
         panel.lookAt(camera.position);
@@ -405,7 +406,7 @@ function createOptions(options) {
     });
     
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51);
+    background.position.set(0, 1.6 - VERTICAL_OFFSET - (bgHeight/2), -1.51);
     optionsContainer.add(background);
     
     // Position the entire options container
