@@ -378,8 +378,6 @@ function loadOptions() {
             console.log('Parsed options:', options);
             if (options && options.length === 9) {
                 createOptions(options);
-            } else {
-                console.error('Invalid options format:', options);
             }
         } catch (e) {
             console.error('Error loading options:', e);
@@ -428,8 +426,6 @@ function animate() {
                 
                 // Strong pulsing effect
                 highlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
-                
-                console.log('Highlighting cell:', intersect.object.userData.row, intersect.object.userData.col);
             }
         } else {
             if (currentIntersect) {
@@ -444,73 +440,6 @@ function animate() {
 }
 
 animate();
-
-// Create debug panel for VR
-function createDebugPanel(text) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 512;
-    canvas.height = 256;
-    
-    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    context.strokeStyle = '#ff0000';
-    context.lineWidth = 2;
-    context.strokeRect(2, 2, canvas.width-4, canvas.height-4);
-    
-    context.fillStyle = '#ff0000';
-    context.font = 'bold 24px Arial';
-    context.textAlign = 'left';
-    context.textBaseline = 'top';
-    
-    // Split text into lines
-    const lines = text.split('\n');
-    let y = 10;
-    for(let line of lines) {
-        context.fillText(line, 10, y);
-        y += 30;
-    }
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-}
-
-// Create debug mesh
-const debugGeometry = new THREE.PlaneGeometry(2, 1);
-const debugMaterial = new THREE.MeshBasicMaterial({ 
-    transparent: true,
-    opacity: 0.9,
-    side: THREE.DoubleSide
-});
-const debugPanel = new THREE.Mesh(debugGeometry, debugMaterial);
-debugPanel.position.set(0, 3, -2); // Position above grid
-scene.add(debugPanel);
-
-// Update debug panel
-function updateDebugPanel(text) {
-    debugMaterial.map = createDebugPanel(text);
-    debugMaterial.needsUpdate = true;
-}
-
-// Load options when entering VR
-renderer.xr.addEventListener('sessionstart', () => {
-    debugPanel.visible = true;
-    updateDebugPanel('VR Session Starting...');
-    
-    // Initial positioning
-    gridGroup.position.set(0, 1.6, -1.5);
-    loadOptions();
-});
-
-// Hide debug panel when not in VR
-renderer.xr.addEventListener('sessionend', () => {
-    debugPanel.visible = false;
-});
-
-// Also try loading options immediately in case we're already in VR
-loadOptions();
 
 // Handle window resize
 window.addEventListener('resize', () => {
