@@ -90,6 +90,54 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
 directionalLight.position.set(0, 2, 4);
 scene.add(directionalLight);
 
+// Create highlight materials
+const gridHighlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide
+});
+
+const optionHighlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ffff,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide
+});
+
+// Create highlight frames
+const gridHighlightFrame = new THREE.Mesh(
+    new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
+    gridHighlightMaterial
+);
+gridHighlightFrame.visible = false;
+gridGroup.add(gridHighlightFrame);
+
+const optionHighlightFrame = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.65, 0.35),
+    optionHighlightMaterial
+);
+optionHighlightFrame.visible = false;
+optionsGroup.add(optionHighlightFrame);
+
+// Create reticle
+const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
+const reticleMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    opacity: 0.8,
+    transparent: true,
+    side: THREE.DoubleSide
+});
+const reticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
+reticle.position.z = -0.5;
+camera.add(reticle);
+scene.add(camera);
+
+// Setup raycaster
+const raycaster = new THREE.Raycaster();
+let currentIntersect = null;
+let currentHighlight = null;
+
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
@@ -174,6 +222,52 @@ renderer.xr.addEventListener('sessionend', () => {
 // Animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
+        const time = Date.now() * 0.001;
+        
+        // Pulse the reticle
+        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
+        
+        // Update raycaster
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        
+        // Check intersections with grid cells and options
+        const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
+        const optionPanels = optionsGroup.children.filter(child => child.userData && child.userData.type === 'option');
+        
+        const intersectsGrid = raycaster.intersectObjects(gridCells);
+        const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        // Handle highlighting
+        if (intersectsGrid.length > 0) {
+            const intersect = intersectsGrid[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'grid';
+                
+                gridHighlightFrame.position.copy(intersect.object.position);
+                gridHighlightFrame.visible = true;
+                optionHighlightFrame.visible = false;
+            }
+        } else if (intersectsOptions.length > 0) {
+            const intersect = intersectsOptions[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'option';
+                
+                optionHighlightFrame.position.copy(intersect.object.position);
+                optionHighlightFrame.rotation.copy(intersect.object.rotation);
+                optionHighlightFrame.visible = true;
+                gridHighlightFrame.visible = false;
+            }
+        } else {
+            if (currentIntersect) {
+                currentIntersect = null;
+                currentHighlight = null;
+                gridHighlightFrame.visible = false;
+                optionHighlightFrame.visible = false;
+            }
+        }
+        
         updateOptionPanels();
         renderer.render(scene, camera);
     });
