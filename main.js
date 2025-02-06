@@ -15,6 +15,68 @@ scene.background = new THREE.Color(0x001100); // Very dark green background
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 2.5);
 
+// Create grid group
+const gridGroup = new THREE.Group();
+scene.add(gridGroup);
+
+// Create options group
+const optionsGroup = new THREE.Group();
+scene.add(optionsGroup);
+
+// Create grid lines
+const gridGeometry = new THREE.BufferGeometry();
+const gridMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+
+// Create vertices for grid lines
+const points = [];
+const cellSize = 1;
+const gridSize = 3;
+const totalSize = cellSize * gridSize;
+const halfSize = totalSize / 2;
+
+// Add vertical lines
+for (let i = 0; i <= gridSize; i++) {
+    const x = (i * cellSize) - halfSize;
+    points.push(
+        x, -halfSize, -2,
+        x, halfSize, -2
+    );
+}
+
+// Add horizontal lines
+for (let i = 0; i <= gridSize; i++) {
+    const y = (i * cellSize) - halfSize;
+    points.push(
+        -halfSize, y, -2,
+        halfSize, y, -2
+    );
+}
+
+gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
+gridGroup.add(gridLines);
+
+// Create collision planes for grid cells
+const planeGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const invisibleMaterial = new THREE.MeshBasicMaterial({
+    visible: false,
+    side: THREE.DoubleSide
+});
+
+// Add collision planes for each cell
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
+        
+        const plane = new THREE.Mesh(planeGeometry, invisibleMaterial);
+        plane.position.set(x, y, z);
+        plane.userData = { type: 'cell', row, col };
+        gridGroup.add(plane);
+    }
+}
+
 // Renderer with optimized WebXR settings
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
@@ -45,10 +107,6 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Make sure everything is visible
     gridGroup.visible = true;
     optionsGroup.visible = true;
-    
-    // Reset any highlights
-    gridHighlightFrame.visible = false;
-    optionHighlightFrame.visible = false;
 });
 
 // Handle session end
@@ -135,7 +193,6 @@ directionalLight.position.set(0, 2, 4);
 scene.add(directionalLight);
 
 // Grid constants
-const gridGroup = new THREE.Group();
 const cellSize = 0.6;
 const gap = 0.05;
 const totalSize = (cellSize * 3) + (gap * 2);
@@ -281,10 +338,6 @@ scene.add(camera);
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null; // Track which highlight frame is active
-
-// Create option panels group
-const optionsGroup = new THREE.Group();
-scene.add(optionsGroup);
 
 // Function to create text texture for options
 function createOptionTexture(text) {
