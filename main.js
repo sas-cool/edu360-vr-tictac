@@ -233,6 +233,141 @@ scene.add(camera);
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 
+// Create option panels group
+const optionsGroup = new THREE.Group();
+scene.add(optionsGroup);
+
+// Function to create text texture for options
+function createOptionTexture(text) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 128;
+    
+    // Background with transparency
+    context.fillStyle = 'rgba(0, 40, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Border
+    context.strokeStyle = '#00ff00';
+    context.lineWidth = 4;
+    context.strokeRect(2, 2, canvas.width-4, canvas.height-4);
+    
+    // Text
+    context.fillStyle = '#00ff00';
+    context.font = 'bold 24px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    
+    // Word wrap text
+    const words = text.split(' ');
+    let line = '';
+    let lines = [];
+    let y = 64;
+    
+    for(let word of words) {
+        const testLine = line + word + ' ';
+        const metrics = context.measureText(testLine);
+        if (metrics.width > canvas.width - 20) {
+            lines.push(line);
+            line = word + ' ';
+        } else {
+            line = testLine;
+        }
+    }
+    lines.push(line);
+    
+    // Center text vertically
+    y = canvas.height/2 - (lines.length - 1) * 15;
+    
+    // Draw each line
+    for(let line of lines) {
+        context.fillText(line.trim(), canvas.width/2, y);
+        y += 30;
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// Function to create and position option panels around grid
+function createOptions(options) {
+    // Clear existing options
+    while(optionsGroup.children.length > 0) {
+        optionsGroup.remove(optionsGroup.children[0]);
+    }
+    
+    const OFFSET = 0.7; // Distance from grid cell
+    const PANEL_WIDTH = 0.8;
+    const PANEL_HEIGHT = 0.4;
+    
+    options.forEach((text, index) => {
+        const geometry = new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT);
+        const texture = createOptionTexture(text);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        
+        const panel = new THREE.Mesh(geometry, material);
+        panel.userData = { type: 'option', index };
+        
+        // Calculate position based on index (0-8)
+        const row = Math.floor(index / 3); // 0, 1, or 2
+        const col = index % 3; // 0, 1, or 2
+        
+        // Base position from grid
+        const baseX = (col - 1) * 0.7; // -0.7, 0, 0.7
+        const baseY = (1 - row) * 0.7; // 0.7, 0, -0.7
+        
+        // Offset position for options
+        let x = baseX;
+        let y = baseY;
+        
+        // Adjust offset based on position
+        if (row === 0) y += OFFSET; // Top row
+        if (row === 2) y -= OFFSET; // Bottom row
+        if (col === 0) x -= OFFSET; // Left column
+        if (col === 2) x += OFFSET; // Right column
+        
+        panel.position.set(x, y + 1.6, -1.5); // Match grid position
+        panel.lookAt(camera.position); // Face the camera
+        
+        optionsGroup.add(panel);
+    });
+}
+
+// Function to load and display options
+function loadOptions() {
+    const savedData = localStorage.getItem('vrTicTacOptions');
+    if (savedData) {
+        try {
+            const { options } = JSON.parse(savedData);
+            if (options && options.length === 9) {
+                createOptions(options);
+            }
+        } catch (e) {
+            console.error('Error loading options:', e);
+        }
+    }
+}
+
+// Load options when entering VR
+renderer.xr.addEventListener('sessionstart', () => {
+    gridGroup.position.set(0, 1.6, -1.5);
+    loadOptions();
+});
+
+// Keep options facing camera
+function updateOptionPanels() {
+    optionsGroup.children.forEach(panel => {
+        panel.lookAt(camera.position);
+    });
+}
+
 // Animation with highlight detection
 function animate() {
     renderer.setAnimationLoop(() => {
@@ -269,11 +404,79 @@ function animate() {
             }
         }
         
+        updateOptionPanels();
         renderer.render(scene, camera);
     });
 }
 
 animate();
+
+// Create debug panel for VR
+function createDebugPanel(text) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 512;
+    canvas.height = 256;
+    
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    context.strokeStyle = '#ff0000';
+    context.lineWidth = 2;
+    context.strokeRect(2, 2, canvas.width-4, canvas.height-4);
+    
+    context.fillStyle = '#ff0000';
+    context.font = 'bold 24px Arial';
+    context.textAlign = 'left';
+    context.textBaseline = 'top';
+    
+    // Split text into lines
+    const lines = text.split('\n');
+    let y = 10;
+    for(let line of lines) {
+        context.fillText(line, 10, y);
+        y += 30;
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// Create debug mesh
+const debugGeometry = new THREE.PlaneGeometry(2, 1);
+const debugMaterial = new THREE.MeshBasicMaterial({ 
+    transparent: true,
+    opacity: 0.9,
+    side: THREE.DoubleSide
+});
+const debugPanel = new THREE.Mesh(debugGeometry, debugMaterial);
+debugPanel.position.set(0, 3, -2); // Position above grid
+scene.add(debugPanel);
+
+// Update debug panel
+function updateDebugPanel(text) {
+    debugMaterial.map = createDebugPanel(text);
+    debugMaterial.needsUpdate = true;
+}
+
+// Load options when entering VR
+renderer.xr.addEventListener('sessionstart', () => {
+    debugPanel.visible = true;
+    updateDebugPanel('VR Session Starting...');
+    
+    // Initial positioning
+    gridGroup.position.set(0, 1.6, -1.5);
+    loadOptions();
+});
+
+// Hide debug panel when not in VR
+renderer.xr.addEventListener('sessionend', () => {
+    debugPanel.visible = false;
+});
+
+// Also try loading options immediately in case we're already in VR
+loadOptions();
 
 // Handle window resize
 window.addEventListener('resize', () => {

@@ -184,12 +184,20 @@ generateButton.addEventListener('click', async () => {
         const response = await generateOptions(apiKey, topic);
         const { options, rightAnswerLetters } = processApiResponse(response);
 
-        // Store in localStorage
-        localStorage.setItem('vrTicTacOptions', JSON.stringify({
-            options,
-            rightAnswers: rightAnswerLetters,
-            topic
-        }));
+        // Store in multiple places for redundancy
+        try {
+            const dataToStore = {
+                options,
+                rightAnswers: rightAnswerLetters,
+                topic
+            };
+            localStorage.setItem('vrTicTacOptions', JSON.stringify(dataToStore));
+            sessionStorage.setItem('vrTicTacOptions', JSON.stringify(dataToStore));
+            window.vrTicTacOptions = dataToStore;
+            document.vrTicTacOptions = dataToStore;
+        } catch (e) {
+            console.error('Error storing data:', e);
+        }
 
         // Display options
         optionsDisplay.innerHTML = `
