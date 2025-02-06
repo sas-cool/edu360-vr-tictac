@@ -344,7 +344,7 @@ function createOptions(options) {
     const PANEL_WIDTH = 0.6;  // Slightly smaller panels
     const PANEL_HEIGHT = 0.3;
     const PANEL_SPACING = 0.05; // Reduced spacing
-    const VERTICAL_OFFSET = 0.2; // Much closer to grid
+    const VERTICAL_OFFSET = -1.0; // Negative moves options UP instead of down
     const ROWS = 3;
     const COLS = 3;
     
@@ -372,7 +372,7 @@ function createOptions(options) {
         
         // Position panels in rows below the grid
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
-        const y = -(VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING * 2));
+        const y = (VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING * 2)); // Changed sign here too
         const z = -1.5; // Same depth as grid
         
         panel.position.set(x, y + 1.6, z);
@@ -406,7 +406,7 @@ function createOptions(options) {
     });
     
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 - VERTICAL_OFFSET - (bgHeight/2), -1.51);
+    background.position.set(0, 1.6 + VERTICAL_OFFSET + (bgHeight/2), -1.51); // Changed sign here too
     optionsContainer.add(background);
     
     // Position the entire options container
