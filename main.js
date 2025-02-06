@@ -227,16 +227,41 @@ renderer.xr.addEventListener('sessionstart', () => {
                 const isSelected = currentIntersect.userData.selected;
                 currentIntersect.userData.selected = !isSelected;
                 
-                // Redraw the text with appropriate color
+                // Clear the canvas
                 context.clearRect(0, 0, canvas.width, canvas.height);
-                context.fillStyle = isSelected ? '#00ff00' : '#0000ff'; // Toggle between green and blue
+                
+                // Set text properties
+                context.fillStyle = isSelected ? '#00ff00' : '#0000ff';
                 context.font = 'bold 28px Arial';
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
                 
-                // Get the text from userData
+                // Word wrap text
                 const text = currentIntersect.userData.text;
-                context.fillText(text, canvas.width/2, canvas.height/2);
+                const words = text.split(' ');
+                let line = '';
+                let lines = [];
+                
+                for(let word of words) {
+                    const testLine = line + word + ' ';
+                    const metrics = context.measureText(testLine);
+                    if (metrics.width > canvas.width - 20) {
+                        lines.push(line);
+                        line = word + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line);
+                
+                // Center text vertically
+                let y = canvas.height/2 - (lines.length - 1) * 15;
+                
+                // Draw each line
+                for(let line of lines) {
+                    context.fillText(line.trim(), canvas.width/2, y);
+                    y += 30;
+                }
                 
                 // Update the texture
                 texture.needsUpdate = true;
