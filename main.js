@@ -159,7 +159,7 @@ document.body.appendChild(centerButton);
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
     gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 1.2, -1); 
+    optionsGroup.position.set(0, 0.8, -0.8); // Lower Y position and closer Z position
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
