@@ -18,6 +18,7 @@ camera.position.set(0, 1.6, 2.5);
 // Grid constants
 const cellSize = 0.6;
 const gap = 0.05;
+const gridSize = 3;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
@@ -30,12 +31,13 @@ const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
 
 // Create grid lines
-const gridGeometry = new THREE.BufferGeometry();
-const gridMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+const gridMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x00ff00,
+    linewidth: 2
+});
 
-// Create vertices for grid lines
+const gridGeometry = new THREE.BufferGeometry();
 const points = [];
-const gridSize = 3;
 
 // Add vertical lines
 for (let i = 0; i <= gridSize; i++) {
@@ -60,7 +62,7 @@ const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
 // Create collision planes for grid cells
-const planeGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
 const invisibleMaterial = new THREE.MeshBasicMaterial({
     visible: false,
     side: THREE.DoubleSide
@@ -73,64 +75,46 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -2;
         
-        const plane = new THREE.Mesh(planeGeometry, invisibleMaterial);
+        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
         plane.position.set(x, y, z);
         plane.userData = { type: 'cell', row, col };
         gridGroup.add(plane);
     }
 }
 
-// Renderer with optimized WebXR settings
+// Enhanced lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+directionalLight.position.set(0, 2, 4);
+scene.add(directionalLight);
+
+// Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
-    logarithmicDepthBuffer: true, // Better depth precision
-    precision: 'highp' // High precision
+    logarithmicDepthBuffer: true,
+    precision: 'highp'
 });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
+renderer.xr.setFramebufferScaleFactor(1.0);
+renderer.xr.setReferenceSpaceType('local-floor');
 
 // Add renderer and VR button to document
 document.body.appendChild(renderer.domElement);
-document.body.appendChild(VRButton.createButton(renderer));
-
-// Handle VR session start
-renderer.xr.addEventListener('sessionstart', () => {
-    console.log('VR Session starting...');
-    
-    // Position grid at comfortable height and distance
-    gridGroup.position.set(0, 1.6, -1.5);
-    
-    // Position options group in front of camera
-    optionsGroup.position.set(0, 1.6, -1);
-    
-    // Load and position options
-    loadOptions();
-    
-    // Make sure everything is visible
-    gridGroup.visible = true;
-    optionsGroup.visible = true;
-});
-
-// Handle session end
-renderer.xr.addEventListener('sessionend', () => {
-    console.log('VR Session ended');
-    // Reset positions
-    gridGroup.position.set(0, 0, 0);
-    optionsGroup.position.set(0, 0, 0);
-});
-
-// Create VR button and center button
 const vrButton = VRButton.createButton(renderer);
-document.body.appendChild(renderer.domElement);
 document.body.appendChild(vrButton);
+vrButton.style.left = '20px';
+vrButton.style.right = 'auto';
 
 // Add center grid button
 const centerButton = document.createElement('button');
 centerButton.textContent = 'Center Grid';
 centerButton.style.position = 'fixed';
 centerButton.style.bottom = '20px';
-centerButton.style.right = '20px'; // Position on right side
+centerButton.style.right = '20px';
 centerButton.style.padding = '10px 20px';
 centerButton.style.backgroundColor = '#00ff00';
 centerButton.style.color = 'black';
@@ -142,10 +126,6 @@ centerButton.style.fontFamily = 'Arial, sans-serif';
 centerButton.style.fontSize = '13px';
 centerButton.style.fontWeight = 'bold';
 
-// Style VR button to ensure it stays on the left
-vrButton.style.left = '20px';
-vrButton.style.right = 'auto';
-
 // Center grid function
 function centerGrid() {
     if (renderer.xr.isPresenting) {
@@ -156,23 +136,17 @@ function centerGrid() {
             const view = viewerPose.views[0];
             const viewMatrix = view.transform.matrix;
             
-            // Extract position and direction from view matrix
             const position = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
             const scale = new THREE.Vector3();
             
-            // Decompose view matrix
             new THREE.Matrix4().fromArray(viewMatrix).decompose(position, quaternion, scale);
             
-            // Position grid 1.5 meters in front of user
             const forward = new THREE.Vector3(0, 0, -1.5);
             forward.applyQuaternion(quaternion);
             
-            // Set grid position
             gridGroup.position.copy(position).add(forward);
-            gridGroup.position.y = 1.6; // Maintain comfortable height
-            
-            // Make grid face user
+            gridGroup.position.y = 1.6;
             gridGroup.lookAt(position);
         }
     }
@@ -181,161 +155,38 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Optimize WebXR session settings
-renderer.xr.setFramebufferScaleFactor(1.0); // Ensure full resolution
-
-// Adjust reference space type for better stability
-renderer.xr.setReferenceSpaceType('local-floor');
-
-// Enhanced lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Brighter ambient
-scene.add(ambientLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Full brightness
-directionalLight.position.set(0, 2, 4);
-scene.add(directionalLight);
-
-// Create grid lines using LineSegments
-const lineMaterial = new THREE.LineBasicMaterial({
-    color: 0x00ff00,
-    linewidth: 2
+// Handle VR session start/end
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 1.6, -1);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
 });
 
-// Create highlight materials
-const gridHighlightMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide
+renderer.xr.addEventListener('sessionend', () => {
+    console.log('VR Session ended');
+    gridGroup.position.set(0, 0, 0);
+    optionsGroup.position.set(0, 0, 0);
 });
 
-// Create option highlight material (different color)
-const optionHighlightMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ffff,
-    transparent: true,
-    opacity: 0.5,
-    side: THREE.DoubleSide
-});
-
-// Create highlight frame for grid cells
-const gridHighlightGeometry = new THREE.PlaneGeometry(0.6, 0.6);
-const gridHighlightFrame = new THREE.Mesh(gridHighlightGeometry, gridHighlightMaterial);
-gridHighlightFrame.position.z = 0.01; // Slightly in front
-gridHighlightFrame.visible = false;
-gridGroup.add(gridHighlightFrame);
-
-// Create highlight frame for options
-const optionHighlightGeometry = new THREE.PlaneGeometry(0.65, 0.35); // Slightly larger than option panels
-const optionHighlightFrame = new THREE.Mesh(optionHighlightGeometry, optionHighlightMaterial);
-optionHighlightFrame.visible = false;
-
-// Create collision planes for detection (invisible)
-const collisionPlanes = [];
-const planeGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9); // Slightly smaller than cell
-const invisibleMaterial = new THREE.MeshBasicMaterial({
-    visible: false
-});
-
-// Create grid cells with collision detection
-for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-        const x = (col - 1) * cellSize;
-        const y = (1 - row) * cellSize + 1.6;
-        const z = -1.99; // Slightly in front of grid
-
-        // Add invisible collision plane
-        const plane = new THREE.Mesh(planeGeometry, invisibleMaterial);
-        plane.position.set(x, y, z);
-        plane.userData = { row, col };
-        collisionPlanes.push(plane);
-        gridGroup.add(plane);
-    }
+// Animation loop
+function animate() {
+    renderer.setAnimationLoop(() => {
+        updateOptionPanels();
+        renderer.render(scene, camera);
+    });
 }
 
-// Create highlight frame with double line effect
-const createHighlightFrame = () => {
-    // Inner frame
-    const innerGeometry = new THREE.BufferGeometry();
-    const innerVertices = new Float32Array([
-        -cellSize/2.2, -cellSize/2.2, 0,
-        cellSize/2.2, -cellSize/2.2, 0,
-        cellSize/2.2, cellSize/2.2, 0,
-        -cellSize/2.2, cellSize/2.2, 0,
-        -cellSize/2.2, -cellSize/2.2, 0
-    ]);
-    innerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(innerVertices, 3));
-    
-    // Outer frame
-    const outerGeometry = new THREE.BufferGeometry();
-    const outerVertices = new Float32Array([
-        -cellSize/1.8, -cellSize/1.8, 0,
-        cellSize/1.8, -cellSize/1.8, 0,
-        cellSize/1.8, cellSize/1.8, 0,
-        -cellSize/1.8, cellSize/1.8, 0,
-        -cellSize/1.8, -cellSize/1.8, 0
-    ]);
-    outerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(outerVertices, 3));
-    
-    const frameGroup = new THREE.Group();
-    const innerFrame = new THREE.Line(innerGeometry, gridHighlightMaterial);
-    const outerFrame = new THREE.Line(outerGeometry, gridHighlightMaterial);
-    
-    frameGroup.add(innerFrame);
-    frameGroup.add(outerFrame);
-    frameGroup.visible = false;
-    frameGroup.position.z = -1.98; // Slightly in front of collision planes
-    gridGroup.add(frameGroup);
-    return frameGroup;
-};
+animate();
 
-const highlightFrame = createHighlightFrame();
-
-// Create vertices for grid lines
-const points = [];
-
-// Vertical lines
-for (let i = 0; i <= 3; i++) {
-    const x = (i - 1.5) * cellSize;
-    points.push(
-        x, -cellSize * 1.5 + 1.6, -2,  // Start point
-        x, cellSize * 1.5 + 1.6, -2    // End point
-    );
-}
-
-// Horizontal lines
-for (let i = 0; i <= 3; i++) {
-    const y = (i - 1.5) * cellSize + 1.6;
-    points.push(
-        -cellSize * 1.5, y, -2,  // Start point
-        cellSize * 1.5, y, -2    // End point
-    );
-}
-
-const geometry = new THREE.BufferGeometry();
-geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-const gridLines = new THREE.LineSegments(geometry, lineMaterial);
-gridGroup.add(gridLines);
-scene.add(gridGroup);
-
-// Create reticle
-const reticleGroup = new THREE.Group();
-const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
-const reticleMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    opacity: 0.8,
-    transparent: true,
-    side: THREE.DoubleSide
+// Handle window resize
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
-const reticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
-reticle.position.z = -0.5; // Place it half a meter in front of the camera
-reticleGroup.add(reticle);
-camera.add(reticleGroup); // Attach to camera so it moves with view
-scene.add(camera);
-
-// Setup raycaster
-const raycaster = new THREE.Raycaster();
-let currentIntersect = null;
-let currentHighlight = null; // Track which highlight frame is active
 
 // Function to create text texture for options
 function createOptionTexture(text) {
@@ -495,75 +346,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Animation with highlight detection
-function animate() {
-    renderer.setAnimationLoop(() => {
-        const time = Date.now() * 0.001;
-        
-        // Only rotate around Y-axis, very gently
-        gridGroup.rotation.y = Math.sin(time * 0.3) * 0.1;
-        
-        // Pulse the reticle slightly
-        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
-        
-        // Update raycaster
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        
-        // Get all option panels
-        const optionPanels = optionsGroup.children.filter(child => child.userData && child.userData.type === 'option');
-        
-        // Check intersections
-        const intersectsGrid = raycaster.intersectObjects(collisionPlanes);
-        const intersectsOptions = raycaster.intersectObjects(optionPanels);
-        
-        // Handle highlighting
-        if (intersectsGrid.length > 0) {
-            const intersect = intersectsGrid[0];
-            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
-                currentIntersect = intersect.object;
-                currentHighlight = 'grid';
-                
-                gridHighlightFrame.position.x = intersect.object.position.x;
-                gridHighlightFrame.position.y = intersect.object.position.y;
-                gridHighlightFrame.visible = true;
-                optionHighlightFrame.visible = false;
-                
-                gridHighlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
-            }
-        } else if (intersectsOptions.length > 0) {
-            const intersect = intersectsOptions[0];
-            
-            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
-                currentIntersect = intersect.object;
-                currentHighlight = 'option';
-                
-                optionHighlightFrame.position.copy(intersect.object.position);
-                optionHighlightFrame.rotation.copy(intersect.object.rotation);
-                optionHighlightFrame.visible = true;
-                gridHighlightFrame.visible = false;
-                
-                optionHighlightMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2;
-            }
-        } else {
-            if (currentIntersect) {
-                currentIntersect = null;
-                currentHighlight = null;
-                gridHighlightFrame.visible = false;
-                optionHighlightFrame.visible = false;
-            }
-        }
-        
-        updateOptionPanels();
-        renderer.render(scene, camera);
-    });
-}
-
-animate();
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
