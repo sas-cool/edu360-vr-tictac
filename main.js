@@ -343,8 +343,8 @@ function createOptions(options) {
     
     const PANEL_WIDTH = 0.6;  // Slightly smaller panels
     const PANEL_HEIGHT = 0.3;
-    const PANEL_SPACING = 0.1;
-    const VERTICAL_OFFSET = 0.8; // Distance below grid
+    const PANEL_SPACING = 0.05; // Reduced spacing
+    const VERTICAL_OFFSET = 0.2; // Much closer to grid
     const ROWS = 3;
     const COLS = 3;
     
@@ -372,7 +372,7 @@ function createOptions(options) {
         
         // Position panels in rows below the grid
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
-        const y = -(VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING));
+        const y = -(VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING * 2));
         const z = -1.5; // Same depth as grid
         
         panel.position.set(x, y + 1.6, z);
@@ -396,7 +396,7 @@ function createOptions(options) {
     
     // Add a background panel behind options
     const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
-    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
+    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING * 2) * ROWS + PANEL_SPACING;
     const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
     const bgMaterial = new THREE.MeshBasicMaterial({
         color: 0x001100,
