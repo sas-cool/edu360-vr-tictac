@@ -25,6 +25,10 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 
+// Add renderer and VR button to document
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(VRButton.createButton(renderer));
+
 // Handle VR session start
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
