@@ -341,7 +341,8 @@ function createOptions(options) {
         });
         
         const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { type: 'option', index };
+        panel.userData = { type: 'option', index }; // Ensure type is set
+        panel.name = `option-${index}`; // Add name for debugging
         
         // Calculate position in grid layout
         const row = Math.floor(index / COLS);
@@ -355,37 +356,12 @@ function createOptions(options) {
         panel.position.set(x, y + 1.6, z);
         panel.lookAt(camera.position);
         
-        // Add glow effect
-        const glowMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.DoubleSide
-        });
-        
-        const glowGeometry = new THREE.PlaneGeometry(PANEL_WIDTH + 0.05, PANEL_HEIGHT + 0.05);
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        glow.position.z = -0.01; // Slightly behind panel
-        panel.add(glow);
+        // Make sure panel is in raycast targets
+        panel.raycast = THREE.Mesh.prototype.raycast;
         
         optionsGroup.add(panel);
-        console.log(`Option ${index} positioned at:`, x, y + 1.6, z);
+        console.log(`Created option ${index} at:`, x, y + 1.6, z);
     });
-    
-    // Add a background panel behind options for better visibility
-    const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
-    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
-    const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-        color: 0x001100,
-        transparent: true,
-        opacity: 0.5,
-        side: THREE.DoubleSide
-    });
-    
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51); // Adjusted to match new option positions
-    optionsGroup.add(background);
 }
 
 // Function to load and display options
@@ -436,9 +412,16 @@ function animate() {
         // Update raycaster
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
         
-        // Check both grid cells and options
+        // Get all option panels
+        const optionPanels = optionsGroup.children.filter(child => child.userData.type === 'option');
+        console.log('Number of option panels:', optionPanels.length);
+        
+        // Check intersections
         const intersectsGrid = raycaster.intersectObjects(collisionPlanes);
-        const intersectsOptions = raycaster.intersectObjects(optionsGroup.children.filter(child => child.userData.type === 'option'));
+        const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        console.log('Grid intersections:', intersectsGrid.length);
+        console.log('Option intersections:', intersectsOptions.length);
         
         // Handle highlighting
         if (intersectsGrid.length > 0) {
@@ -447,28 +430,26 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'grid';
                 
-                // Position highlight frame for grid
                 highlightFrame.position.x = intersect.object.position.x;
                 highlightFrame.position.y = intersect.object.position.y;
                 highlightFrame.visible = true;
                 optionHighlightFrame.visible = false;
                 
-                // Strong pulsing effect
                 highlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
             }
         } else if (intersectsOptions.length > 0) {
             const intersect = intersectsOptions[0];
+            console.log('Highlighting option:', intersect.object.name);
+            
             if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
                 currentIntersect = intersect.object;
                 currentHighlight = 'option';
                 
-                // Position highlight frame for option
                 optionHighlightFrame.position.copy(intersect.object.position);
                 optionHighlightFrame.rotation.copy(intersect.object.rotation);
                 optionHighlightFrame.visible = true;
                 highlightFrame.visible = false;
                 
-                // Gentle pulsing effect for options
                 optionHighlightMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2;
             }
         } else {
