@@ -255,7 +255,7 @@ function createOptionTexture(text) {
     
     // Text
     context.fillStyle = '#00ff00';
-    context.font = 'bold 24px Arial';
+    context.font = 'bold 28px Arial'; // Slightly larger font
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     
@@ -300,9 +300,11 @@ function createOptions(options) {
         optionsGroup.remove(optionsGroup.children[0]);
     }
     
-    const OFFSET = 1.0; // Increased distance from grid cell
-    const PANEL_WIDTH = 0.8;
-    const PANEL_HEIGHT = 0.4;
+    const PANEL_WIDTH = 0.6;  // Slightly smaller panels
+    const PANEL_HEIGHT = 0.3;
+    const PANEL_SPACING = 0.1; // Space between panels
+    const ROWS = 3;
+    const COLS = 3;
     
     options.forEach((text, index) => {
         console.log(`Creating option ${index}:`, text);
@@ -319,26 +321,16 @@ function createOptions(options) {
         const panel = new THREE.Mesh(geometry, material);
         panel.userData = { type: 'option', index };
         
-        // Calculate position based on index (0-8)
-        const row = Math.floor(index / 3); // 0, 1, or 2
-        const col = index % 3; // 0, 1, or 2
+        // Calculate position in grid layout
+        const row = Math.floor(index / COLS);
+        const col = index % COLS;
         
-        // Base position from grid
-        const baseX = (col - 1) * 0.7; // -0.7, 0, 0.7
-        const baseY = (1 - row) * 0.7; // 0.7, 0, -0.7
+        // Position panels in rows below the grid
+        const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING); // Center horizontally
+        const y = 0.8 - (row * (PANEL_HEIGHT + PANEL_SPACING)); // Start below grid
+        const z = -1.5; // Same depth as grid
         
-        // Offset position for options
-        let x = baseX;
-        let y = baseY;
-        
-        // Adjust offset based on position
-        if (row === 0) y += OFFSET; // Top row
-        if (row === 2) y -= OFFSET; // Bottom row
-        if (col === 0) x -= OFFSET; // Left column
-        if (col === 2) x += OFFSET; // Right column
-        
-        // Move options closer to viewer
-        panel.position.set(x, y + 1.6, -1.2); // Brought closer than grid (-1.5)
+        panel.position.set(x, y + 1.6, z);
         panel.lookAt(camera.position);
         
         // Add glow effect
@@ -355,8 +347,23 @@ function createOptions(options) {
         panel.add(glow);
         
         optionsGroup.add(panel);
-        console.log(`Option ${index} positioned at:`, x, y + 1.6, -1.2);
+        console.log(`Option ${index} positioned at:`, x, y + 1.6, z);
     });
+    
+    // Add a background panel behind options for better visibility
+    const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
+    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
+    const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
+    const bgMaterial = new THREE.MeshBasicMaterial({
+        color: 0x001100,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+    });
+    
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    background.position.set(0, 1.6 + 0.8 - (bgHeight/2), -1.51); // Slightly behind options
+    optionsGroup.add(background);
 }
 
 // Function to load and display options
