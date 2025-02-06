@@ -32,6 +32,9 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Position grid at comfortable height and distance
     gridGroup.position.set(0, 1.6, -1.5);
     
+    // Position options group in front of camera
+    optionsGroup.position.set(0, 1.6, -1);
+    
     // Load and position options
     loadOptions();
     
@@ -49,6 +52,7 @@ renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
     // Reset positions
     gridGroup.position.set(0, 0, 0);
+    optionsGroup.position.set(0, 0, 0);
 });
 
 // Create VR button and center button
@@ -341,14 +345,13 @@ function createOptions(options) {
         optionsGroup.remove(optionsGroup.children[0]);
     }
     
-    const PANEL_WIDTH = 0.6;  // Slightly smaller panels
-    const PANEL_HEIGHT = 0.3;
-    const PANEL_SPACING = 0.05; // Reduced spacing
-    const VERTICAL_OFFSET = -1.0; // Negative moves options UP instead of down
+    const PANEL_WIDTH = 0.4;  // Make panels smaller
+    const PANEL_HEIGHT = 0.2;
+    const PANEL_SPACING = 0.05;
     const ROWS = 3;
     const COLS = 3;
     
-    // Create options container to help with positioning
+    // Create options container
     const optionsContainer = new THREE.Group();
     optionsGroup.add(optionsContainer);
     
@@ -370,13 +373,12 @@ function createOptions(options) {
         const row = Math.floor(index / COLS);
         const col = index % COLS;
         
-        // Position panels in rows below the grid
+        // Center the grid of options
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
-        const y = (VERTICAL_OFFSET + row * (PANEL_HEIGHT + PANEL_SPACING * 2)); // Changed sign here too
-        const z = -1.5; // Same depth as grid
+        const y = -(row * (PANEL_HEIGHT + PANEL_SPACING));
+        const z = 0;  // All panels in same plane
         
-        panel.position.set(x, y + 1.6, z);
-        panel.lookAt(camera.position);
+        panel.position.set(x, y, z);
         
         // Add glow effect
         const glowMaterial = new THREE.MeshBasicMaterial({
@@ -396,7 +398,7 @@ function createOptions(options) {
     
     // Add a background panel behind options
     const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
-    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING * 2) * ROWS + PANEL_SPACING;
+    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
     const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
     const bgMaterial = new THREE.MeshBasicMaterial({
         color: 0x001100,
@@ -406,11 +408,11 @@ function createOptions(options) {
     });
     
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 + VERTICAL_OFFSET + (bgHeight/2), -1.51); // Changed sign here too
+    background.position.z = -0.01;
     optionsContainer.add(background);
     
-    // Position the entire options container
-    optionsContainer.position.set(0, 0, 0);
+    // Center the entire container
+    optionsContainer.position.set(0, bgHeight/2, 0);
 }
 
 // Function to load and display options
