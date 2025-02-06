@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 
+// Import setup screen
+import { setupScreen } from './setup.js';
+
+// Add setup screen to document
+document.body.appendChild(setupScreen);
+
 // Scene setup with better background
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x001100); // Very dark green background
