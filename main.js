@@ -293,16 +293,20 @@ function createOptionTexture(text) {
 
 // Function to create and position option panels around grid
 function createOptions(options) {
+    console.log('Creating options:', options);
+    
     // Clear existing options
     while(optionsGroup.children.length > 0) {
         optionsGroup.remove(optionsGroup.children[0]);
     }
     
-    const OFFSET = 0.7; // Distance from grid cell
+    const OFFSET = 1.0; // Increased distance from grid cell
     const PANEL_WIDTH = 0.8;
     const PANEL_HEIGHT = 0.4;
     
     options.forEach((text, index) => {
+        console.log(`Creating option ${index}:`, text);
+        
         const geometry = new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT);
         const texture = createOptionTexture(text);
         const material = new THREE.MeshBasicMaterial({
@@ -333,25 +337,48 @@ function createOptions(options) {
         if (col === 0) x -= OFFSET; // Left column
         if (col === 2) x += OFFSET; // Right column
         
-        panel.position.set(x, y + 1.6, -1.5); // Match grid position
-        panel.lookAt(camera.position); // Face the camera
+        // Move options closer to viewer
+        panel.position.set(x, y + 1.6, -1.2); // Brought closer than grid (-1.5)
+        panel.lookAt(camera.position);
+        
+        // Add glow effect
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        
+        const glowGeometry = new THREE.PlaneGeometry(PANEL_WIDTH + 0.05, PANEL_HEIGHT + 0.05);
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.z = -0.01; // Slightly behind panel
+        panel.add(glow);
         
         optionsGroup.add(panel);
+        console.log(`Option ${index} positioned at:`, x, y + 1.6, -1.2);
     });
 }
 
 // Function to load and display options
 function loadOptions() {
+    console.log('Loading options...');
     const savedData = localStorage.getItem('vrTicTacOptions');
+    console.log('Saved data:', savedData);
+    
     if (savedData) {
         try {
             const { options } = JSON.parse(savedData);
+            console.log('Parsed options:', options);
             if (options && options.length === 9) {
                 createOptions(options);
+            } else {
+                console.error('Invalid options format:', options);
             }
         } catch (e) {
             console.error('Error loading options:', e);
         }
+    } else {
+        console.error('No saved data found');
     }
 }
 

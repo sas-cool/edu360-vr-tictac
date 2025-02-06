@@ -151,8 +151,10 @@ Now, generate 9 options where 3 of them are the right options of the game topic 
         }
 
         const data = await response.json();
+        console.log('API response:', data);
         return data.choices[0].message.content;
     } catch (error) {
+        console.error('Error generating options:', error);
         throw new Error('Failed to generate options: ' + error.message);
     }
 }
@@ -162,6 +164,7 @@ function processApiResponse(response) {
     const parts = response.split('right)');
     const options = parts[0].trim().split('\n');
     const rightAnswerLetters = parts[1].trim().split(',');
+    console.log('Processed API response:', options, rightAnswerLetters);
     return { options, rightAnswerLetters };
 }
 
@@ -191,12 +194,29 @@ generateButton.addEventListener('click', async () => {
                 rightAnswers: rightAnswerLetters,
                 topic
             };
+            console.log('Data to store:', dataToStore);
             localStorage.setItem('vrTicTacOptions', JSON.stringify(dataToStore));
             sessionStorage.setItem('vrTicTacOptions', JSON.stringify(dataToStore));
             window.vrTicTacOptions = dataToStore;
             document.vrTicTacOptions = dataToStore;
+            
+            // Add visible feedback
+            const feedback = document.createElement('div');
+            feedback.style.position = 'fixed';
+            feedback.style.bottom = '20px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.backgroundColor = '#00ff00';
+            feedback.style.color = 'black';
+            feedback.style.padding = '10px';
+            feedback.style.borderRadius = '5px';
+            feedback.textContent = 'Options saved successfully!';
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 3000);
+            
         } catch (e) {
             console.error('Error storing data:', e);
+            alert('Error saving options: ' + e.message);
         }
 
         // Display options
@@ -210,6 +230,7 @@ generateButton.addEventListener('click', async () => {
         enterVRButton.style.display = 'block';
 
     } catch (error) {
+        console.error('Error generating options:', error);
         errorMessage.textContent = error.message;
         errorMessage.style.display = 'block';
     } finally {
