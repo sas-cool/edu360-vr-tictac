@@ -118,13 +118,34 @@ const lineMaterial = new THREE.LineBasicMaterial({
     linewidth: 2
 });
 
-// Create highlight material with more obvious color and thickness
-const highlightMaterial = new THREE.LineBasicMaterial({
-    color: 0xffff00, // Bright yellow
-    linewidth: 3,
-    opacity: 1.0,
-    transparent: true
+// Create highlight materials
+const highlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide
 });
+
+// Create option highlight material (different color)
+const optionHighlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ffff,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide
+});
+
+// Create highlight frame for grid cells
+const highlightGeometry = new THREE.PlaneGeometry(0.6, 0.6);
+const highlightFrame = new THREE.Mesh(highlightGeometry, highlightMaterial);
+highlightFrame.position.z = 0.01; // Slightly in front
+highlightFrame.visible = false;
+gridGroup.add(highlightFrame);
+
+// Create highlight frame for options
+const optionHighlightGeometry = new THREE.PlaneGeometry(0.65, 0.35); // Slightly larger than option panels
+const optionHighlightFrame = new THREE.Mesh(optionHighlightGeometry, optionHighlightMaterial);
+optionHighlightFrame.visible = false;
+optionsGroup.add(optionHighlightFrame);
 
 // Create collision planes for detection (invisible)
 const collisionPlanes = [];
@@ -232,6 +253,7 @@ scene.add(camera);
 // Setup raycaster
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
+let currentHighlight = null; // Track which highlight frame is active
 
 // Create option panels group
 const optionsGroup = new THREE.Group();
@@ -413,24 +435,48 @@ function animate() {
         
         // Update raycaster
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        const intersects = raycaster.intersectObjects(collisionPlanes);
         
-        if (intersects.length > 0) {
-            const intersect = intersects[0];
-            if (currentIntersect !== intersect.object) {
+        // Check both grid cells and options
+        const intersectsGrid = raycaster.intersectObjects(collisionPlanes);
+        const intersectsOptions = raycaster.intersectObjects(optionsGroup.children.filter(child => child.userData.type === 'option'));
+        
+        // Handle highlighting
+        if (intersectsGrid.length > 0) {
+            const intersect = intersectsGrid[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
                 currentIntersect = intersect.object;
-                // Position highlight frame
+                currentHighlight = 'grid';
+                
+                // Position highlight frame for grid
                 highlightFrame.position.x = intersect.object.position.x;
                 highlightFrame.position.y = intersect.object.position.y;
                 highlightFrame.visible = true;
+                optionHighlightFrame.visible = false;
                 
                 // Strong pulsing effect
                 highlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
             }
+        } else if (intersectsOptions.length > 0) {
+            const intersect = intersectsOptions[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'option';
+                
+                // Position highlight frame for option
+                optionHighlightFrame.position.copy(intersect.object.position);
+                optionHighlightFrame.rotation.copy(intersect.object.rotation);
+                optionHighlightFrame.visible = true;
+                highlightFrame.visible = false;
+                
+                // Gentle pulsing effect for options
+                optionHighlightMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2;
+            }
         } else {
             if (currentIntersect) {
                 currentIntersect = null;
+                currentHighlight = null;
                 highlightFrame.visible = false;
+                optionHighlightFrame.visible = false;
             }
         }
         
