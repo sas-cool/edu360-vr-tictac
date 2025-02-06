@@ -356,12 +356,37 @@ function createOptions(options) {
         panel.position.set(x, y + 1.6, z);
         panel.lookAt(camera.position);
         
-        // Make sure panel is in raycast targets
-        panel.raycast = THREE.Mesh.prototype.raycast;
+        // Add glow effect
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        
+        const glowGeometry = new THREE.PlaneGeometry(PANEL_WIDTH + 0.05, PANEL_HEIGHT + 0.05);
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.z = -0.01; // Slightly behind panel
+        panel.add(glow);
         
         optionsGroup.add(panel);
         console.log(`Created option ${index} at:`, x, y + 1.6, z);
     });
+    
+    // Add a background panel behind options for better visibility
+    const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
+    const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
+    const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
+    const bgMaterial = new THREE.MeshBasicMaterial({
+        color: 0x001100,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+    });
+    
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51); // Adjusted to match new option positions
+    optionsGroup.add(background);
 }
 
 // Function to load and display options
@@ -413,15 +438,11 @@ function animate() {
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
         
         // Get all option panels
-        const optionPanels = optionsGroup.children.filter(child => child.userData.type === 'option');
-        console.log('Number of option panels:', optionPanels.length);
+        const optionPanels = optionsGroup.children.filter(child => child.userData && child.userData.type === 'option');
         
         // Check intersections
         const intersectsGrid = raycaster.intersectObjects(collisionPlanes);
         const intersectsOptions = raycaster.intersectObjects(optionPanels);
-        
-        console.log('Grid intersections:', intersectsGrid.length);
-        console.log('Option intersections:', intersectsOptions.length);
         
         // Handle highlighting
         if (intersectsGrid.length > 0) {
@@ -439,7 +460,6 @@ function animate() {
             }
         } else if (intersectsOptions.length > 0) {
             const intersect = intersectsOptions[0];
-            console.log('Highlighting option:', intersect.object.name);
             
             if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
                 currentIntersect = intersect.object;
