@@ -114,7 +114,7 @@ gridHighlightFrame.visible = false;
 gridGroup.add(gridHighlightFrame);
 
 const optionHighlightFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.65, 0.35),
+    new THREE.PlaneGeometry(0.4, 0.2), // Match exact option panel size
     optionHighlightMaterial
 );
 optionHighlightFrame.visible = false;
@@ -232,7 +232,7 @@ function animate() {
         
         // Check intersections with grid cells and options
         const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
-        const optionPanels = optionsGroup.children.filter(child => child.userData && child.userData.type === 'option');
+        const optionPanels = optionsGroup.children[0]?.children || []; // Get panels from container
         
         const intersectsGrid = raycaster.intersectObjects(gridCells);
         const intersectsOptions = raycaster.intersectObjects(optionPanels);
@@ -254,7 +254,9 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'option';
                 
-                optionHighlightFrame.position.copy(intersect.object.position);
+                const worldPos = new THREE.Vector3();
+                intersect.object.getWorldPosition(worldPos);
+                optionHighlightFrame.position.copy(worldPos);
                 optionHighlightFrame.rotation.copy(intersect.object.rotation);
                 optionHighlightFrame.visible = true;
                 gridHighlightFrame.visible = false;
