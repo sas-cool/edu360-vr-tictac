@@ -207,10 +207,38 @@ document.body.appendChild(centerButton);
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
     gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.8, -0.8); // Lower Y position and closer Z position
+    optionsGroup.position.set(0, 0.8, -0.8);
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
+
+    // Setup VR controller
+    const session = renderer.xr.getSession();
+    session.addEventListener('select', () => {
+        // Check if we're hovering over an option
+        if (currentIntersect && currentHighlight === 'option') {
+            // Get the text canvas from the texture
+            const texture = currentIntersect.material.map;
+            if (texture && texture.image) {
+                const canvas = texture.image;
+                const context = canvas.getContext('2d');
+                
+                // Redraw the text in blue
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#0000ff';
+                context.font = 'bold 28px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                
+                // Get the text from userData
+                const text = currentIntersect.userData.text;
+                context.fillText(text, canvas.width/2, canvas.height/2);
+                
+                // Update the texture
+                texture.needsUpdate = true;
+            }
+        }
+    });
 });
 
 renderer.xr.addEventListener('sessionend', () => {
@@ -369,12 +397,11 @@ function createOptions(options) {
             map: texture,
             transparent: true,
             opacity: 0.9,
-            side: THREE.DoubleSide,
-            color: 0x00ff00 // Set initial color to green
+            side: THREE.DoubleSide
         });
         
         const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { type: 'option', index };
+        panel.userData = { type: 'option', index, text }; // Store text in userData
         panel.name = `option-${index}`;
         
         // Calculate position in grid layout
