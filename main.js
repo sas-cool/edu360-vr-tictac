@@ -232,10 +232,17 @@ function animate() {
         
         // Check intersections with grid cells and options
         const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
-        const optionPanels = optionsGroup.children[0]?.children || []; // Get panels from container
+        const optionPanels = optionsGroup.children[0]?.children.filter(child => child instanceof THREE.Mesh && child.material.map) || [];
         
         const intersectsGrid = raycaster.intersectObjects(gridCells);
         const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        // Reset all options to green
+        optionPanels.forEach(panel => {
+            if (panel.material && panel.material.color) {
+                panel.material.color.setHex(0x00ff00);
+            }
+        });
         
         // Handle highlighting
         if (intersectsGrid.length > 0) {
@@ -254,12 +261,10 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'option';
                 
-                const worldPos = new THREE.Vector3();
-                intersect.object.getWorldPosition(worldPos);
-                optionHighlightFrame.position.copy(worldPos);
-                optionHighlightFrame.rotation.copy(intersect.object.rotation);
-                optionHighlightFrame.visible = true;
-                gridHighlightFrame.visible = false;
+                // Change the hovered option to red
+                if (intersect.object.material) {
+                    intersect.object.material.color.setHex(0xff0000);
+                }
             }
         } else {
             if (currentIntersect) {
@@ -364,7 +369,8 @@ function createOptions(options) {
             map: texture,
             transparent: true,
             opacity: 0.9,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            color: 0x00ff00 // Set initial color to green
         });
         
         const panel = new THREE.Mesh(geometry, material);
