@@ -27,8 +27,28 @@ renderer.xr.enabled = true;
 
 // Handle VR session start
 renderer.xr.addEventListener('sessionstart', () => {
-    // Initial positioning
+    console.log('VR Session starting...');
+    
+    // Position grid at comfortable height and distance
     gridGroup.position.set(0, 1.6, -1.5);
+    
+    // Load and position options
+    loadOptions();
+    
+    // Make sure everything is visible
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    
+    // Reset any highlights
+    gridHighlightFrame.visible = false;
+    optionHighlightFrame.visible = false;
+});
+
+// Handle session end
+renderer.xr.addEventListener('sessionend', () => {
+    console.log('VR Session ended');
+    // Reset positions
+    gridGroup.position.set(0, 0, 0);
 });
 
 // Create VR button and center button
@@ -145,7 +165,6 @@ gridGroup.add(gridHighlightFrame);
 const optionHighlightGeometry = new THREE.PlaneGeometry(0.65, 0.35); // Slightly larger than option panels
 const optionHighlightFrame = new THREE.Mesh(optionHighlightGeometry, optionHighlightMaterial);
 optionHighlightFrame.visible = false;
-optionsGroup.add(optionHighlightFrame);
 
 // Create collision planes for detection (invisible)
 const collisionPlanes = [];
@@ -328,9 +347,11 @@ function createOptions(options) {
     const ROWS = 3;
     const COLS = 3;
     
+    // Create options container to help with positioning
+    const optionsContainer = new THREE.Group();
+    optionsGroup.add(optionsContainer);
+    
     options.forEach((text, index) => {
-        console.log(`Creating option ${index}:`, text);
-        
         const geometry = new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT);
         const texture = createOptionTexture(text);
         const material = new THREE.MeshBasicMaterial({
@@ -341,17 +362,17 @@ function createOptions(options) {
         });
         
         const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { type: 'option', index }; // Ensure type is set
-        panel.name = `option-${index}`; // Add name for debugging
+        panel.userData = { type: 'option', index };
+        panel.name = `option-${index}`;
         
         // Calculate position in grid layout
         const row = Math.floor(index / COLS);
         const col = index % COLS;
         
         // Position panels in rows below the grid
-        const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING); // Center horizontally
-        const y = -0.3 - (row * (PANEL_HEIGHT + PANEL_SPACING)); // Start lower, below grid
-        const z = -1.5; // Same depth as grid
+        const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
+        const y = -0.3 - (row * (PANEL_HEIGHT + PANEL_SPACING));
+        const z = -1.5;
         
         panel.position.set(x, y + 1.6, z);
         panel.lookAt(camera.position);
@@ -366,14 +387,13 @@ function createOptions(options) {
         
         const glowGeometry = new THREE.PlaneGeometry(PANEL_WIDTH + 0.05, PANEL_HEIGHT + 0.05);
         const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        glow.position.z = -0.01; // Slightly behind panel
+        glow.position.z = -0.01;
         panel.add(glow);
         
-        optionsGroup.add(panel);
-        console.log(`Created option ${index} at:`, x, y + 1.6, z);
+        optionsContainer.add(panel);
     });
     
-    // Add a background panel behind options for better visibility
+    // Add a background panel behind options
     const bgWidth = (PANEL_WIDTH + PANEL_SPACING) * COLS + PANEL_SPACING;
     const bgHeight = (PANEL_HEIGHT + PANEL_SPACING) * ROWS + PANEL_SPACING;
     const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
@@ -385,36 +405,31 @@ function createOptions(options) {
     });
     
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51); // Adjusted to match new option positions
-    optionsGroup.add(background);
+    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51);
+    optionsContainer.add(background);
+    
+    // Position the entire options container
+    optionsContainer.position.set(0, 0, 0);
 }
 
 // Function to load and display options
 function loadOptions() {
     console.log('Loading options...');
     const savedData = localStorage.getItem('vrTicTacOptions');
-    console.log('Saved data:', savedData);
-    
     if (savedData) {
         try {
             const { options } = JSON.parse(savedData);
-            console.log('Parsed options:', options);
             if (options && options.length === 9) {
                 createOptions(options);
             }
         } catch (e) {
             console.error('Error loading options:', e);
         }
-    } else {
-        console.error('No saved data found');
     }
 }
 
-// Load options when entering VR
-renderer.xr.addEventListener('sessionstart', () => {
-    gridGroup.position.set(0, 1.6, -1.5);
-    loadOptions();
-});
+// Load options immediately in case we're already in VR
+loadOptions();
 
 // Keep options facing camera
 function updateOptionPanels() {
