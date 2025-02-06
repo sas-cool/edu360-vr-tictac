@@ -119,7 +119,7 @@ const lineMaterial = new THREE.LineBasicMaterial({
 });
 
 // Create highlight materials
-const highlightMaterial = new THREE.MeshBasicMaterial({
+const gridHighlightMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff00,
     transparent: true,
     opacity: 0.5,
@@ -135,11 +135,11 @@ const optionHighlightMaterial = new THREE.MeshBasicMaterial({
 });
 
 // Create highlight frame for grid cells
-const highlightGeometry = new THREE.PlaneGeometry(0.6, 0.6);
-const highlightFrame = new THREE.Mesh(highlightGeometry, highlightMaterial);
-highlightFrame.position.z = 0.01; // Slightly in front
-highlightFrame.visible = false;
-gridGroup.add(highlightFrame);
+const gridHighlightGeometry = new THREE.PlaneGeometry(0.6, 0.6);
+const gridHighlightFrame = new THREE.Mesh(gridHighlightGeometry, gridHighlightMaterial);
+gridHighlightFrame.position.z = 0.01; // Slightly in front
+gridHighlightFrame.visible = false;
+gridGroup.add(gridHighlightFrame);
 
 // Create highlight frame for options
 const optionHighlightGeometry = new THREE.PlaneGeometry(0.65, 0.35); // Slightly larger than option panels
@@ -195,8 +195,8 @@ const createHighlightFrame = () => {
     outerGeometry.setAttribute('position', new THREE.Float32BufferAttribute(outerVertices, 3));
     
     const frameGroup = new THREE.Group();
-    const innerFrame = new THREE.Line(innerGeometry, highlightMaterial);
-    const outerFrame = new THREE.Line(outerGeometry, highlightMaterial);
+    const innerFrame = new THREE.Line(innerGeometry, gridHighlightMaterial);
+    const outerFrame = new THREE.Line(outerGeometry, gridHighlightMaterial);
     
     frameGroup.add(innerFrame);
     frameGroup.add(outerFrame);
@@ -451,12 +451,12 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'grid';
                 
-                highlightFrame.position.x = intersect.object.position.x;
-                highlightFrame.position.y = intersect.object.position.y;
-                highlightFrame.visible = true;
+                gridHighlightFrame.position.x = intersect.object.position.x;
+                gridHighlightFrame.position.y = intersect.object.position.y;
+                gridHighlightFrame.visible = true;
                 optionHighlightFrame.visible = false;
                 
-                highlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
+                gridHighlightMaterial.opacity = 0.7 + Math.sin(time * 6) * 0.3;
             }
         } else if (intersectsOptions.length > 0) {
             const intersect = intersectsOptions[0];
@@ -468,7 +468,7 @@ function animate() {
                 optionHighlightFrame.position.copy(intersect.object.position);
                 optionHighlightFrame.rotation.copy(intersect.object.rotation);
                 optionHighlightFrame.visible = true;
-                highlightFrame.visible = false;
+                gridHighlightFrame.visible = false;
                 
                 optionHighlightMaterial.opacity = 0.5 + Math.sin(time * 4) * 0.2;
             }
@@ -476,7 +476,7 @@ function animate() {
             if (currentIntersect) {
                 currentIntersect = null;
                 currentHighlight = null;
-                highlightFrame.visible = false;
+                gridHighlightFrame.visible = false;
                 optionHighlightFrame.visible = false;
             }
         }
