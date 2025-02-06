@@ -327,7 +327,7 @@ function createOptions(options) {
         
         // Position panels in rows below the grid
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING); // Center horizontally
-        const y = 0.8 - (row * (PANEL_HEIGHT + PANEL_SPACING)); // Start below grid
+        const y = -0.3 - (row * (PANEL_HEIGHT + PANEL_SPACING)); // Start lower, below grid
         const z = -1.5; // Same depth as grid
         
         panel.position.set(x, y + 1.6, z);
@@ -362,7 +362,7 @@ function createOptions(options) {
     });
     
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    background.position.set(0, 1.6 + 0.8 - (bgHeight/2), -1.51); // Slightly behind options
+    background.position.set(0, 1.6 - 0.3 - (bgHeight/2), -1.51); // Adjusted to match new option positions
     optionsGroup.add(background);
 }
 
