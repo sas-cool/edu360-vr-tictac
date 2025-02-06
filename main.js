@@ -223,9 +223,13 @@ renderer.xr.addEventListener('sessionstart', () => {
                 const canvas = texture.image;
                 const context = canvas.getContext('2d');
                 
-                // Redraw the text in blue
+                // Toggle selection
+                const isSelected = currentIntersect.userData.selected;
+                currentIntersect.userData.selected = !isSelected;
+                
+                // Redraw the text with appropriate color
                 context.clearRect(0, 0, canvas.width, canvas.height);
-                context.fillStyle = '#0000ff';
+                context.fillStyle = isSelected ? '#00ff00' : '#0000ff'; // Toggle between green and blue
                 context.font = 'bold 28px Arial';
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
@@ -401,7 +405,7 @@ function createOptions(options) {
         });
         
         const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { type: 'option', index, text }; // Store text in userData
+        panel.userData = { type: 'option', index, text, selected: false }; // Store text in userData
         panel.name = `option-${index}`;
         
         // Calculate position in grid layout
