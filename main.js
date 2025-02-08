@@ -126,25 +126,31 @@ const selectedGridFrame = new THREE.Mesh(
 selectedGridFrame.visible = false;
 gridGroup.add(selectedGridFrame);
 
-const optionHighlightFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.2), // Match exact option panel size
-    optionHighlightMaterial
-);
-optionHighlightFrame.visible = false;
-optionsGroup.add(optionHighlightFrame);
+// Function to create option frames (will be called after optionsGroup.children[0] exists)
+function createOptionFrames() {
+    const optionHighlightFrame = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.4, 0.2),
+        optionHighlightMaterial
+    );
+    optionHighlightFrame.visible = false;
+    optionsGroup.children[0].add(optionHighlightFrame);
 
-// Create selected option frame with blue color
-const selectedOptionFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.2),
-    new THREE.MeshBasicMaterial({
-        color: 0x0000ff, // Blue for selected state
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide
-    })
-);
-selectedOptionFrame.visible = false;
-optionsGroup.add(selectedOptionFrame);
+    const selectedOptionFrame = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.4, 0.2),
+        new THREE.MeshBasicMaterial({
+            color: 0x0000ff, // Blue for selected state
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        })
+    );
+    selectedOptionFrame.visible = false;
+    optionsGroup.children[0].add(selectedOptionFrame);
+
+    return { optionHighlightFrame, selectedOptionFrame };
+}
+
+let optionHighlightFrame, selectedOptionFrame;
 
 // Create reticle
 const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
@@ -238,6 +244,11 @@ renderer.xr.addEventListener('sessionstart', () => {
     gridGroup.visible = true;
     optionsGroup.visible = true;
 
+    // Create option frames after options group is created
+    const frames = createOptionFrames();
+    optionHighlightFrame = frames.optionHighlightFrame;
+    selectedOptionFrame = frames.selectedOptionFrame;
+
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
@@ -289,13 +300,6 @@ function animate() {
         const intersectsGrid = raycaster.intersectObjects(gridCells);
         const intersectsOptions = raycaster.intersectObjects(optionPanels);
         
-        // Reset all options to green
-        optionPanels.forEach(panel => {
-            if (panel.material && panel.material.color) {
-                panel.material.color.setHex(0x00ff00);
-            }
-        });
-        
         // Handle highlighting
         if (intersectsGrid.length > 0) {
             const intersect = intersectsGrid[0];
@@ -305,7 +309,7 @@ function animate() {
                 
                 gridHighlightFrame.position.copy(intersect.object.position);
                 gridHighlightFrame.visible = true;
-                optionHighlightFrame.visible = false;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
             }
         } else if (intersectsOptions.length > 0) {
             const intersect = intersectsOptions[0];
@@ -313,9 +317,11 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'option';
                 
-                optionHighlightFrame.position.copy(intersect.object.position);
-                optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
-                optionHighlightFrame.visible = true;
+                if (optionHighlightFrame) {
+                    optionHighlightFrame.position.copy(intersect.object.position);
+                    optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
+                    optionHighlightFrame.visible = true;
+                }
                 gridHighlightFrame.visible = false;
             }
         } else {
@@ -323,7 +329,7 @@ function animate() {
                 currentIntersect = null;
                 currentHighlight = null;
                 gridHighlightFrame.visible = false;
-                optionHighlightFrame.visible = false;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
             }
         }
         
