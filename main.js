@@ -253,6 +253,53 @@ renderer.xr.addEventListener('sessionstart', () => {
     let selectedGrid = null;
     let selectedOption = null;
 
+    // Function to transfer text from option to grid
+    function transferTextToGrid(grid, option) {
+        // Get option text
+        const optionText = option.userData.text;
+        if (!optionText) return;
+
+        // Create canvas for grid text
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Set text properties
+        context.fillStyle = '#000000';
+        context.font = 'bold 100px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+
+        // Draw text
+        context.fillText(optionText, canvas.width/2, canvas.height/2);
+
+        // Create and apply texture to grid
+        const texture = new THREE.CanvasTexture(canvas);
+        grid.material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 1
+        });
+        grid.userData.text = optionText;
+
+        // Clear option text
+        const optionCanvas = option.material.map.image;
+        const optionContext = optionCanvas.getContext('2d');
+        optionContext.clearRect(0, 0, optionCanvas.width, optionCanvas.height);
+        option.material.map.needsUpdate = true;
+        option.userData.text = '';
+
+        // Reset selections
+        selectedGridFrame.visible = false;
+        selectedOptionFrame.visible = false;
+        selectedGrid = null;
+        selectedOption = null;
+    }
+
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
@@ -271,43 +318,7 @@ renderer.xr.addEventListener('sessionstart', () => {
 
             // If we have both selected grid and option, transfer text
             if (selectedGrid && selectedOption) {
-                // Create texture for grid text
-                const gridCanvas = document.createElement('canvas');
-                gridCanvas.width = 256;
-                gridCanvas.height = 256;
-                const gridContext = gridCanvas.getContext('2d');
-                
-                // Set text properties for grid
-                gridContext.fillStyle = '#000000';
-                gridContext.font = 'bold 120px Arial';
-                gridContext.textAlign = 'center';
-                gridContext.textBaseline = 'middle';
-                
-                // Draw text in grid
-                const optionText = selectedOption.userData.text;
-                gridContext.fillText(optionText, gridCanvas.width/2, gridCanvas.height/2);
-                
-                // Apply texture to grid
-                const gridTexture = new THREE.CanvasTexture(gridCanvas);
-                selectedGrid.material.map = gridTexture;
-                selectedGrid.material.needsUpdate = true;
-                selectedGrid.userData.text = optionText;
-
-                // Clear selected option's text
-                selectedOption.userData.text = '';
-                const texture = selectedOption.material.map;
-                if (texture && texture.image) {
-                    const canvas = texture.image;
-                    const context = canvas.getContext('2d');
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    texture.needsUpdate = true;
-                }
-
-                // Hide selection frames and reset selections
-                selectedGridFrame.visible = false;
-                selectedOptionFrame.visible = false;
-                selectedGrid = null;
-                selectedOption = null;
+                transferTextToGrid(selectedGrid, selectedOption);
             }
         }
 
@@ -334,43 +345,7 @@ renderer.xr.addEventListener('sessionstart', () => {
 
                 // If we have both selected grid and option, transfer text
                 if (selectedGrid && selectedOption) {
-                    // Create texture for grid text
-                    const gridCanvas = document.createElement('canvas');
-                    gridCanvas.width = 256;
-                    gridCanvas.height = 256;
-                    const gridContext = gridCanvas.getContext('2d');
-                    
-                    // Set text properties for grid
-                    gridContext.fillStyle = '#000000';
-                    gridContext.font = 'bold 120px Arial';
-                    gridContext.textAlign = 'center';
-                    gridContext.textBaseline = 'middle';
-                    
-                    // Draw text in grid
-                    const optionText = selectedOption.userData.text;
-                    gridContext.fillText(optionText, gridCanvas.width/2, gridCanvas.height/2);
-                    
-                    // Apply texture to grid
-                    const gridTexture = new THREE.CanvasTexture(gridCanvas);
-                    selectedGrid.material.map = gridTexture;
-                    selectedGrid.material.needsUpdate = true;
-                    selectedGrid.userData.text = optionText;
-
-                    // Clear selected option's text
-                    selectedOption.userData.text = '';
-                    const texture = selectedOption.material.map;
-                    if (texture && texture.image) {
-                        const canvas = texture.image;
-                        const context = canvas.getContext('2d');
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                        texture.needsUpdate = true;
-                    }
-
-                    // Hide selection frames and reset selections
-                    selectedGridFrame.visible = false;
-                    selectedOptionFrame.visible = false;
-                    selectedGrid = null;
-                    selectedOption = null;
+                    transferTextToGrid(selectedGrid, selectedOption);
                 }
             }
         }
