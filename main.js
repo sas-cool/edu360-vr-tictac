@@ -61,22 +61,24 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Create collision planes and text for each cell
+// Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const textPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.5, cellSize * 0.5); // Smaller geometry for text
 const invisibleMaterial = new THREE.MeshBasicMaterial({
     visible: false,
     side: THREE.DoubleSide
 });
 
+// Add collision planes for each cell
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-        // Calculate exact position for this cell
         const x = (col * cellSize) - halfSize + cellSize/2;
         const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
         
         // Create collision plane
         const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
-        plane.position.set(x, y, -2);
+        plane.position.set(x, y, z);
         plane.userData = { type: 'cell', row, col };
         gridGroup.add(plane);
 
@@ -97,7 +99,7 @@ for (let row = 0; row < gridSize; row++) {
         context.textBaseline = 'middle';
         context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
 
-        // Create text plane with same size as collision plane
+        // Create text plane with smaller size
         const texture = new THREE.CanvasTexture(canvas);
         const textMaterial = new THREE.MeshBasicMaterial({
             map: texture,
@@ -106,10 +108,10 @@ for (let row = 0; row < gridSize; row++) {
         });
 
         // Create text plane and position it exactly where the collision plane is
-        const textPlane = new THREE.Mesh(cellPlaneGeometry, textMaterial);
+        const textPlane = new THREE.Mesh(textPlaneGeometry, textMaterial);
         textPlane.position.copy(plane.position);
         textPlane.position.z = 0.01; // Slightly in front
-        textPlane.userData = { type: 'cell', text: `Testing${gridNum}` };
+        textPlane.userData = { type: 'text', text: `Testing${gridNum}` }; // Mark as text type
         gridGroup.add(textPlane);
     }
 }
