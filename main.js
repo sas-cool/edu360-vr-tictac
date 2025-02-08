@@ -249,28 +249,129 @@ renderer.xr.addEventListener('sessionstart', () => {
     optionHighlightFrame = frames.optionHighlightFrame;
     selectedOptionFrame = frames.selectedOptionFrame;
 
+    // Track selected grid and option
+    let selectedGrid = null;
+    let selectedOption = null;
+
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
         // Handle grid selection when clicking
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'cell') {
+            // If grid already has text, don't allow selection
+            if (currentIntersect.userData.text) {
+                console.log('Grid already has text');
+                return;
+            }
+
             selectedGridFrame.position.copy(currentIntersect.position);
             selectedGridFrame.visible = true;
             gridHighlightFrame.visible = false;
+            selectedGrid = currentIntersect;
+
+            // If we have both selected grid and option, transfer text
+            if (selectedGrid && selectedOption) {
+                // Create texture for grid text
+                const gridCanvas = document.createElement('canvas');
+                gridCanvas.width = 256;
+                gridCanvas.height = 256;
+                const gridContext = gridCanvas.getContext('2d');
+                
+                // Set text properties for grid
+                gridContext.fillStyle = '#000000';
+                gridContext.font = 'bold 120px Arial';
+                gridContext.textAlign = 'center';
+                gridContext.textBaseline = 'middle';
+                
+                // Draw text in grid
+                const optionText = selectedOption.userData.text;
+                gridContext.fillText(optionText, gridCanvas.width/2, gridCanvas.height/2);
+                
+                // Apply texture to grid
+                const gridTexture = new THREE.CanvasTexture(gridCanvas);
+                selectedGrid.material.map = gridTexture;
+                selectedGrid.material.needsUpdate = true;
+                selectedGrid.userData.text = optionText;
+
+                // Clear selected option's text
+                selectedOption.userData.text = '';
+                const texture = selectedOption.material.map;
+                if (texture && texture.image) {
+                    const canvas = texture.image;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    texture.needsUpdate = true;
+                }
+
+                // Hide selection frames and reset selections
+                selectedGridFrame.visible = false;
+                selectedOptionFrame.visible = false;
+                selectedGrid = null;
+                selectedOption = null;
+            }
         }
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
+            // Don't allow selecting empty options
+            if (!currentIntersect.userData.text) {
+                console.log('Option is empty');
+                return;
+            }
+
             // If clicking currently selected option, unselect it
             if (selectedOptionFrame.visible && selectedOptionFrame.position.equals(currentIntersect.position)) {
                 selectedOptionFrame.visible = false;
                 optionHighlightFrame.visible = true;
+                selectedOption = null;
             } else {
                 // Select new option
                 selectedOptionFrame.position.copy(currentIntersect.position);
                 selectedOptionFrame.quaternion.copy(currentIntersect.quaternion);
                 selectedOptionFrame.visible = true;
                 optionHighlightFrame.visible = false;
+                selectedOption = currentIntersect;
+
+                // If we have both selected grid and option, transfer text
+                if (selectedGrid && selectedOption) {
+                    // Create texture for grid text
+                    const gridCanvas = document.createElement('canvas');
+                    gridCanvas.width = 256;
+                    gridCanvas.height = 256;
+                    const gridContext = gridCanvas.getContext('2d');
+                    
+                    // Set text properties for grid
+                    gridContext.fillStyle = '#000000';
+                    gridContext.font = 'bold 120px Arial';
+                    gridContext.textAlign = 'center';
+                    gridContext.textBaseline = 'middle';
+                    
+                    // Draw text in grid
+                    const optionText = selectedOption.userData.text;
+                    gridContext.fillText(optionText, gridCanvas.width/2, gridCanvas.height/2);
+                    
+                    // Apply texture to grid
+                    const gridTexture = new THREE.CanvasTexture(gridCanvas);
+                    selectedGrid.material.map = gridTexture;
+                    selectedGrid.material.needsUpdate = true;
+                    selectedGrid.userData.text = optionText;
+
+                    // Clear selected option's text
+                    selectedOption.userData.text = '';
+                    const texture = selectedOption.material.map;
+                    if (texture && texture.image) {
+                        const canvas = texture.image;
+                        const context = canvas.getContext('2d');
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                        texture.needsUpdate = true;
+                    }
+
+                    // Hide selection frames and reset selections
+                    selectedGridFrame.visible = false;
+                    selectedOptionFrame.visible = false;
+                    selectedGrid = null;
+                    selectedOption = null;
+                }
             }
         }
     });
