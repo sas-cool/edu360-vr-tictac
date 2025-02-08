@@ -152,7 +152,7 @@ let currentIntersect = null;
 let currentHighlight = null;
 
 // Add state tracking variable at the top level
-let selectedOption = null;
+let currentSelectedOption = null;
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -240,20 +240,48 @@ renderer.xr.addEventListener('sessionstart', () => {
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // If there's a previously selected option, unselect it
-            if (selectedOption && selectedOption !== currentIntersect) {
-                selectedOption.userData.selected = false;
-                updateOptionTexture(selectedOption, false);
+            // Get all option panels
+            const optionPanels = optionsGroup.children[0]?.children || [];
+            
+            // If clicking the currently selected option, unselect it
+            if (currentIntersect === currentSelectedOption) {
+                currentSelectedOption = null;
+                // Reset all options to green
+                optionPanels.forEach(panel => {
+                    if (panel.material && panel.material.map) {
+                        const texture = panel.material.map;
+                        const canvas = texture.image;
+                        const context = canvas.getContext('2d');
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                        context.fillStyle = '#00ff00';
+                        context.font = 'bold 28px Arial';
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+                        const text = panel.userData.text;
+                        context.fillText(text, canvas.width/2, canvas.height/2);
+                        texture.needsUpdate = true;
+                    }
+                });
+            } else {
+                // Selecting a new option
+                currentSelectedOption = currentIntersect;
+                // Set all options to green except the selected one
+                optionPanels.forEach(panel => {
+                    if (panel.material && panel.material.map) {
+                        const texture = panel.material.map;
+                        const canvas = texture.image;
+                        const context = canvas.getContext('2d');
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                        context.fillStyle = (panel === currentSelectedOption) ? '#ff0000' : '#00ff00';
+                        context.font = 'bold 28px Arial';
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+                        const text = panel.userData.text;
+                        context.fillText(text, canvas.width/2, canvas.height/2);
+                        texture.needsUpdate = true;
+                    }
+                });
             }
-
-            // Toggle current option
-            currentIntersect.userData.selected = !currentIntersect.userData.selected;
-            
-            // Update selected option reference
-            selectedOption = currentIntersect.userData.selected ? currentIntersect : null;
-            
-            // Update the texture
-            updateOptionTexture(currentIntersect, currentIntersect.userData.selected);
         }
     });
 });
@@ -263,55 +291,6 @@ renderer.xr.addEventListener('sessionend', () => {
     gridGroup.position.set(0, 0, 0);
     optionsGroup.position.set(0, 0, 0);
 });
-
-// Helper function to update option texture
-function updateOptionTexture(option, selected) {
-    const texture = option.material.map;
-    if (texture && texture.image) {
-        const canvas = texture.image;
-        const context = canvas.getContext('2d');
-        
-        // Clear canvas
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Set text properties
-        context.fillStyle = selected ? '#ff0000' : '#00ff00';
-        context.font = 'bold 28px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        
-        // Word wrap text
-        const text = option.userData.text;
-        const words = text.split(' ');
-        let line = '';
-        let lines = [];
-        const maxWidth = canvas.width - 20;
-        
-        for(let word of words) {
-            const testLine = line + word + ' ';
-            const metrics = context.measureText(testLine);
-            if (metrics.width > maxWidth) {
-                lines.push(line);
-                line = word + ' ';
-            } else {
-                line = testLine;
-            }
-        }
-        lines.push(line);
-        
-        // Center text vertically
-        let y = canvas.height/2 - (lines.length - 1) * 15;
-        
-        // Draw each line
-        for(let line of lines) {
-            context.fillText(line.trim(), canvas.width/2, y);
-            y += 30;
-        }
-        
-        // Update the texture
-        texture.needsUpdate = true;
-    }
-}
 
 // Animation loop
 function animate() {
