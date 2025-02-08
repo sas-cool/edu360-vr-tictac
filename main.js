@@ -113,6 +113,19 @@ const gridHighlightFrame = new THREE.Mesh(
 gridHighlightFrame.visible = false;
 gridGroup.add(gridHighlightFrame);
 
+// Create selected grid frame with red color
+const selectedGridFrame = new THREE.Mesh(
+    new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+    })
+);
+selectedGridFrame.visible = false;
+gridGroup.add(selectedGridFrame);
+
 const optionHighlightFrame = new THREE.Mesh(
     new THREE.PlaneGeometry(0.4, 0.2), // Match exact option panel size
     optionHighlightMaterial
@@ -137,10 +150,6 @@ scene.add(camera);
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
-
-// Add state tracking variables at the top level
-let selectedGridBox = null;
-let lockedGridBoxes = [];
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -219,20 +228,14 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
-        // Handle grid box selection
-        if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'grid') {
-            // Only allow selection if grid box isn't locked
-            if (!lockedGridBoxes.includes(currentIntersect)) {
-                // Reset previous grid box if any
-                if (selectedGridBox) {
-                    selectedGridBox.material.color.setHex(0xffffff);
-                }
-                selectedGridBox = currentIntersect;
-                selectedGridBox.material.color.setHex(0xff0000); // Red highlight
-            }
+        // Handle grid selection when clicking
+        if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'cell') {
+            selectedGridFrame.position.copy(currentIntersect.position);
+            selectedGridFrame.visible = true;
+            gridHighlightFrame.visible = false;
         }
 
-        // Handle option selection (keeping existing functionality)
+        // Keep existing option selection code
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
             // Toggle selection state
             currentIntersect.userData.selected = !currentIntersect.userData.selected;
