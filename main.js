@@ -127,24 +127,11 @@ selectedGridFrame.visible = false;
 gridGroup.add(selectedGridFrame);
 
 const optionHighlightFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.2),
+    new THREE.PlaneGeometry(0.4, 0.2), // Match exact option panel size
     optionHighlightMaterial
 );
 optionHighlightFrame.visible = false;
 optionsGroup.add(optionHighlightFrame);
-
-// Create selected option frame with red color
-const selectedOptionFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.2),
-    new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        transparent: true,
-        opacity: 0.5,
-        side: THREE.DoubleSide
-    })
-);
-selectedOptionFrame.visible = false;
-optionsGroup.add(selectedOptionFrame);
 
 // Create reticle
 const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
@@ -250,15 +237,97 @@ renderer.xr.addEventListener('sessionstart', () => {
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // If clicking the currently selected option (where red frame is), unselect it
-            if (selectedOptionFrame.visible && selectedOptionFrame.position.equals(currentIntersect.position)) {
-                selectedOptionFrame.visible = false;
-                optionHighlightFrame.visible = true;
-            } else {
-                // Select new option
-                selectedOptionFrame.position.copy(currentIntersect.position);
-                selectedOptionFrame.visible = true;
-                optionHighlightFrame.visible = false;
+            // Get all option panels
+            const optionPanels = optionsGroup.children[0]?.children || [];
+            
+            // First, unselect all options
+            optionPanels.forEach(panel => {
+                if (panel.material && panel.material.map) {
+                    panel.userData.selected = false;
+                    const texture = panel.material.map;
+                    const canvas = texture.image;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.fillStyle = '#00ff00';
+                    context.font = 'bold 28px Arial';
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    
+                    // Word wrap text
+                    const text = panel.userData.text;
+                    const words = text.split(' ');
+                    let line = '';
+                    let lines = [];
+                    const maxWidth = canvas.width - 20;
+                    
+                    for(let word of words) {
+                        const testLine = line + word + ' ';
+                        const metrics = context.measureText(testLine);
+                        if (metrics.width > maxWidth) {
+                            lines.push(line);
+                            line = word + ' ';
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    lines.push(line);
+                    
+                    // Center text vertically
+                    let y = canvas.height/2 - (lines.length - 1) * 15;
+                    
+                    // Draw each line
+                    for(let line of lines) {
+                        context.fillText(line.trim(), canvas.width/2, y);
+                        y += 30;
+                    }
+                    texture.needsUpdate = true;
+                }
+            });
+            
+            // Then toggle the clicked option
+            // If it was previously selected, it will remain unselected
+            // If it was unselected, it will become the only selected option
+            if (!currentIntersect.userData.selected) {
+                currentIntersect.userData.selected = true;
+                const texture = currentIntersect.material.map;
+                if (texture && texture.image) {
+                    const canvas = texture.image;
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.fillStyle = '#ff0000';
+                    context.font = 'bold 28px Arial';
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    
+                    // Word wrap text
+                    const text = currentIntersect.userData.text;
+                    const words = text.split(' ');
+                    let line = '';
+                    let lines = [];
+                    const maxWidth = canvas.width - 20;
+                    
+                    for(let word of words) {
+                        const testLine = line + word + ' ';
+                        const metrics = context.measureText(testLine);
+                        if (metrics.width > maxWidth) {
+                            lines.push(line);
+                            line = word + ' ';
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    lines.push(line);
+                    
+                    // Center text vertically
+                    let y = canvas.height/2 - (lines.length - 1) * 15;
+                    
+                    // Draw each line
+                    for(let line of lines) {
+                        context.fillText(line.trim(), canvas.width/2, y);
+                        y += 30;
+                    }
+                    texture.needsUpdate = true;
+                }
             }
         }
     });
