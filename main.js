@@ -259,34 +259,36 @@ renderer.xr.addEventListener('sessionstart', () => {
         const optionText = option.userData.text;
         if (!optionText) return;
 
-        // Create canvas for grid text
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
+        // Get the grid's existing texture or create new one if needed
+        if (!grid.material.map) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const texture = new THREE.CanvasTexture(canvas);
+            grid.material.map = texture;
+        }
+
+        // Get the canvas from the grid's texture
+        const canvas = grid.material.map.image;
         const context = canvas.getContext('2d');
 
         // Clear canvas
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Set text properties
+        // Set text properties (similar to options)
         context.fillStyle = '#000000';
         context.font = 'bold 100px Arial';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
 
-        // Draw text
+        // Draw text in center
         context.fillText(optionText, canvas.width/2, canvas.height/2);
 
-        // Create and apply texture to grid
-        const texture = new THREE.CanvasTexture(canvas);
-        grid.material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 1
-        });
+        // Update the texture
+        grid.material.map.needsUpdate = true;
         grid.userData.text = optionText;
 
-        // Clear option text
+        // Clear option text (using same method as grid)
         const optionCanvas = option.material.map.image;
         const optionContext = optionCanvas.getContext('2d');
         optionContext.clearRect(0, 0, optionCanvas.width, optionCanvas.height);
