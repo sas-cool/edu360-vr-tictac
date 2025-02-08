@@ -259,23 +259,16 @@ renderer.xr.addEventListener('sessionstart', () => {
         const optionText = option.userData.text;
         if (!optionText) return;
 
-        // Get the grid's existing texture or create new one if needed
-        if (!grid.material.map) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 256;
-            const texture = new THREE.CanvasTexture(canvas);
-            grid.material.map = texture;
-        }
-
-        // Get the canvas from the grid's texture
-        const canvas = grid.material.map.image;
+        // Create a canvas for the grid texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
         const context = canvas.getContext('2d');
 
-        // Clear canvas
+        // Clear canvas with transparent background
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Set text properties (similar to options)
+        // Set text properties
         context.fillStyle = '#000000';
         context.font = 'bold 100px Arial';
         context.textAlign = 'center';
@@ -284,11 +277,32 @@ renderer.xr.addEventListener('sessionstart', () => {
         // Draw text in center
         context.fillText(optionText, canvas.width/2, canvas.height/2);
 
-        // Update the texture
-        grid.material.map.needsUpdate = true;
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        // Create new material that preserves grid's original properties
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.1
+        });
+
+        // Store old material properties
+        const oldOpacity = grid.material.opacity;
+        const oldColor = grid.material.color;
+
+        // Apply new material
+        grid.material = material;
+        
+        // Restore original properties
+        grid.material.opacity = oldOpacity;
+        grid.material.color = oldColor;
+        
+        // Store text in userData
         grid.userData.text = optionText;
 
-        // Clear option text (using same method as grid)
+        // Clear option text
         const optionCanvas = option.material.map.image;
         const optionContext = optionCanvas.getContext('2d');
         optionContext.clearRect(0, 0, optionCanvas.width, optionCanvas.height);
