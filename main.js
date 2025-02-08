@@ -99,9 +99,9 @@ const gridHighlightMaterial = new THREE.MeshBasicMaterial({
 });
 
 const optionHighlightMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ffff,
+    color: 0xff0000, // Red for hover highlight
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.3,
     side: THREE.DoubleSide
 });
 
@@ -133,11 +133,11 @@ const optionHighlightFrame = new THREE.Mesh(
 optionHighlightFrame.visible = false;
 optionsGroup.add(optionHighlightFrame);
 
-// Create selected option frame with red color
+// Create selected option frame with blue color
 const selectedOptionFrame = new THREE.Mesh(
     new THREE.PlaneGeometry(0.4, 0.2),
     new THREE.MeshBasicMaterial({
-        color: 0xff0000,
+        color: 0x0000ff, // Blue for selected state
         transparent: true,
         opacity: 0.3,
         side: THREE.DoubleSide
