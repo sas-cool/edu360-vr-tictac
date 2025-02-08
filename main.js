@@ -17,9 +17,9 @@ camera.position.set(0, 1.6, 2.5);
 
 // Grid constants
 const cellSize = 0.6;
-const spacing = 0.05;
+const gap = 0.05;
 const gridSize = 3;
-const totalSize = (cellSize * 3) + (spacing * 2);
+const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
 // Create grid group
@@ -519,7 +519,7 @@ for (let i = -1; i <= 1; i++) {
 
         // If this is the center cell (1,1), add default text
         if (i === 0 && j === 0) {
-            context.fillStyle = '#000000';
+            context.fillStyle = '#00FF00'; // Bright green color
             context.font = 'bold 100px Arial';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
@@ -536,7 +536,7 @@ for (let i = -1; i <= 1; i++) {
         });
 
         const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
-        gridMesh.position.set(i * (cellSize + spacing), j * (cellSize + spacing), 0);
+        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
         gridMesh.userData = { type: 'cell' };
         
         // If this is the center cell, add the text to userData
