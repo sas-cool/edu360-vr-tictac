@@ -215,23 +215,21 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
-        // Check if we're hovering over an option
-        if (currentIntersect && currentHighlight === 'option') {
+        if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
+            // Toggle selection state
+            currentIntersect.userData.selected = !currentIntersect.userData.selected;
+            
             // Get the text canvas from the texture
             const texture = currentIntersect.material.map;
             if (texture && texture.image) {
                 const canvas = texture.image;
                 const context = canvas.getContext('2d');
                 
-                // Toggle selection
-                const isSelected = currentIntersect.userData.selected;
-                currentIntersect.userData.selected = !isSelected;
-                
-                // Clear the canvas
+                // Clear canvas
                 context.clearRect(0, 0, canvas.width, canvas.height);
                 
                 // Set text properties
-                context.fillStyle = isSelected ? '#00ff00' : '#0000ff';
+                context.fillStyle = currentIntersect.userData.selected ? '#ff0000' : '#00ff00'; // Red when selected, Green when not
                 context.font = 'bold 28px Arial';
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
@@ -241,11 +239,12 @@ renderer.xr.addEventListener('sessionstart', () => {
                 const words = text.split(' ');
                 let line = '';
                 let lines = [];
+                const maxWidth = canvas.width - 20;
                 
                 for(let word of words) {
                     const testLine = line + word + ' ';
                     const metrics = context.measureText(testLine);
-                    if (metrics.width > canvas.width - 20) {
+                    if (metrics.width > maxWidth) {
                         lines.push(line);
                         line = word + ' ';
                     } else {
