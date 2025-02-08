@@ -240,95 +240,33 @@ renderer.xr.addEventListener('sessionstart', () => {
             // Get all option panels
             const optionPanels = optionsGroup.children[0]?.children || [];
             
-            // First, unselect all options
+            // First, unselect all options (including the current one)
+            optionPanels.forEach(panel => {
+                panel.userData.selected = false;
+            });
+            
+            // Then toggle the clicked option's state
+            currentIntersect.userData.selected = true;
+            
+            // Update all option colors based on their states
             optionPanels.forEach(panel => {
                 if (panel.material && panel.material.map) {
-                    panel.userData.selected = false;
                     const texture = panel.material.map;
                     const canvas = texture.image;
                     const context = canvas.getContext('2d');
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    context.fillStyle = '#00ff00';
+                    
+                    // Only change the fillStyle (text color)
+                    context.fillStyle = panel.userData.selected ? '#ff0000' : '#00ff00';
+                    
+                    // Redraw the text with existing properties
                     context.font = 'bold 28px Arial';
                     context.textAlign = 'center';
                     context.textBaseline = 'middle';
-                    
-                    // Word wrap text
-                    const text = panel.userData.text;
-                    const words = text.split(' ');
-                    let line = '';
-                    let lines = [];
-                    const maxWidth = canvas.width - 20;
-                    
-                    for(let word of words) {
-                        const testLine = line + word + ' ';
-                        const metrics = context.measureText(testLine);
-                        if (metrics.width > maxWidth) {
-                            lines.push(line);
-                            line = word + ' ';
-                        } else {
-                            line = testLine;
-                        }
-                    }
-                    lines.push(line);
-                    
-                    // Center text vertically
-                    let y = canvas.height/2 - (lines.length - 1) * 15;
-                    
-                    // Draw each line
-                    for(let line of lines) {
-                        context.fillText(line.trim(), canvas.width/2, y);
-                        y += 30;
-                    }
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.fillText(panel.userData.text, canvas.width/2, canvas.height/2);
                     texture.needsUpdate = true;
                 }
             });
-            
-            // Then toggle the clicked option
-            // If it was previously selected, it will remain unselected
-            // If it was unselected, it will become the only selected option
-            if (!currentIntersect.userData.selected) {
-                currentIntersect.userData.selected = true;
-                const texture = currentIntersect.material.map;
-                if (texture && texture.image) {
-                    const canvas = texture.image;
-                    const context = canvas.getContext('2d');
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    context.fillStyle = '#ff0000';
-                    context.font = 'bold 28px Arial';
-                    context.textAlign = 'center';
-                    context.textBaseline = 'middle';
-                    
-                    // Word wrap text
-                    const text = currentIntersect.userData.text;
-                    const words = text.split(' ');
-                    let line = '';
-                    let lines = [];
-                    const maxWidth = canvas.width - 20;
-                    
-                    for(let word of words) {
-                        const testLine = line + word + ' ';
-                        const metrics = context.measureText(testLine);
-                        if (metrics.width > maxWidth) {
-                            lines.push(line);
-                            line = word + ' ';
-                        } else {
-                            line = testLine;
-                        }
-                    }
-                    lines.push(line);
-                    
-                    // Center text vertically
-                    let y = canvas.height/2 - (lines.length - 1) * 15;
-                    
-                    // Draw each line
-                    for(let line of lines) {
-                        context.fillText(line.trim(), canvas.width/2, y);
-                        y += 30;
-                    }
-                    texture.needsUpdate = true;
-                }
-            }
         }
     });
 });
