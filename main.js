@@ -519,8 +519,12 @@ for (let i = -1; i <= 1; i++) {
 
         // If this is the center cell (1,1), add default text
         if (i === 0 && j === 0) {
-            context.fillStyle = '#00FF00'; // Bright green color
-            context.font = 'bold 100px Arial';
+            // Clear canvas first
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Use bright neon green for better visibility
+            context.fillStyle = '#00FF00';
+            context.font = 'bold 50px Arial';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             context.fillText('Testing', canvas.width/2, canvas.height/2);
@@ -528,10 +532,14 @@ for (let i = -1; i <= 1; i++) {
 
         // Create texture and material
         const texture = new THREE.CanvasTexture(canvas);
+        
+        // Create two materials:
+        // 1. For the grid background (transparent)
+        // 2. For the text (fully opaque)
         const gridMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.1,
+            opacity: i === 0 && j === 0 ? 1.0 : 0.1, // Full opacity for center cell
             map: texture
         });
 
