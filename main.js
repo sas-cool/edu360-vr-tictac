@@ -61,11 +61,11 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Create grid boxes
+// Create collision planes for grid cells
+const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+
 for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
-        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
-        
         // Create canvas for texture
         const canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -74,8 +74,8 @@ for (let i = -1; i <= 1; i++) {
 
         // Calculate grid number (1-9)
         // Convert from -1,0,1 coordinates to 1-3 coordinates
-        const row = i + 2;  // -1->1, 0->2, 1->3
-        const col = j + 2;  // -1->1, 0->2, 1->3
+        const row = -j + 2;  // Flip j to match grid layout (-1->3, 0->2, 1->1)
+        const col = i + 2;   // -1->1, 0->2, 1->3
         const gridNum = (row - 1) * 3 + col;  // Calculate 1-9 number
 
         // Clear canvas first
@@ -83,50 +83,23 @@ for (let i = -1; i <= 1; i++) {
         
         // Use bright neon green for better visibility
         context.fillStyle = '#00FF00';
-        context.font = 'bold 25px Arial';  // Adjusted font size for longer text
+        context.font = 'bold 20px Arial';  // Smaller font
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
 
         // Create texture and material
         const texture = new THREE.CanvasTexture(canvas);
-        
-        const gridMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
+        const cellMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
             transparent: true,
-            opacity: 1.0,  // Full opacity for all cells
-            map: texture
+            opacity: 1.0
         });
 
-        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
-        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
-        gridMesh.userData = { 
-            type: 'cell',
-            text: `Testing${gridNum}`
-        };
-        
-        gridGroup.add(gridMesh);
-    }
-}
-
-// Create collision planes for grid cells
-const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
-const invisibleMaterial = new THREE.MeshBasicMaterial({
-    visible: false,
-    side: THREE.DoubleSide
-});
-
-// Add collision planes for each cell
-for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-        const x = (col * cellSize) - halfSize + cellSize/2;
-        const y = -(row * cellSize) + halfSize - cellSize/2;
-        const z = -2;
-        
-        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
-        plane.position.set(x, y, z);
-        plane.userData = { type: 'cell', row, col };
-        gridGroup.add(plane);
+        const cellPlane = new THREE.Mesh(cellPlaneGeometry, cellMaterial);
+        cellPlane.position.set(i * (cellSize + gap), j * (cellSize + gap), 0.01);
+        cellPlane.userData = { type: 'cell', text: `Testing${gridNum}` };
+        gridGroup.add(cellPlane);
     }
 }
 
