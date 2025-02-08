@@ -26,54 +26,6 @@ const halfSize = totalSize / 2;
 const gridGroup = new THREE.Group();
 scene.add(gridGroup);
 
-// Create grid boxes
-for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
-        
-        // Create canvas for texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-
-        // Calculate grid number (1-9)
-        // Convert from -1,0,1 coordinates to 1-3 coordinates
-        const row = i + 2;  // -1->1, 0->2, 1->3
-        const col = j + 2;  // -1->1, 0->2, 1->3
-        const gridNum = (row - 1) * 3 + col;  // Calculate 1-9 number
-
-        // Clear canvas first
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Use bright neon green for better visibility
-        context.fillStyle = '#00FF00';
-        context.font = 'bold 20px Arial';  // Smaller font
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(`${gridNum}`, canvas.width/2, canvas.height/2);
-
-        // Create texture and material
-        const texture = new THREE.CanvasTexture(canvas);
-        
-        const gridMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1.0,  // Full opacity for all cells
-            map: texture
-        });
-
-        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
-        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
-        gridMesh.userData = { 
-            type: 'cell',
-            text: `${gridNum}`
-        };
-        
-        gridGroup.add(gridMesh);
-    }
-}
-
 // Create options group
 const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
@@ -108,6 +60,54 @@ for (let i = 0; i <= gridSize; i++) {
 gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
+
+// Create grid boxes
+for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+        
+        // Create canvas for texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+
+        // Calculate grid number (1-9)
+        // Convert from -1,0,1 coordinates to 1-3 coordinates
+        const row = i + 2;  // -1->1, 0->2, 1->3
+        const col = j + 2;  // -1->1, 0->2, 1->3
+        const gridNum = (row - 1) * 3 + col;  // Calculate 1-9 number
+
+        // Clear canvas first
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Use bright neon green for better visibility
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 25px Arial';  // Adjusted font size for longer text
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
+
+        // Create texture and material
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        const gridMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,  // Full opacity for all cells
+            map: texture
+        });
+
+        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
+        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
+        gridMesh.userData = { 
+            type: 'cell',
+            text: `Testing${gridNum}`
+        };
+        
+        gridGroup.add(gridMesh);
+    }
+}
 
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
@@ -470,49 +470,23 @@ function createOptions(options) {
     
     options.forEach((text, index) => {
         const geometry = new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT);
+        const texture = createOptionTexture(text);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
         
-        // Create canvas for texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-
-        // Calculate grid number (1-9)
-        // Convert from -1,0,1 coordinates to 1-3 coordinates
+        const panel = new THREE.Mesh(geometry, material);
+        panel.userData = { type: 'option', index, text, selected: false }; // Store text in userData
+        panel.name = `option-${index}`;
+        
+        // Calculate position in grid layout
         const row = Math.floor(index / COLS);
         const col = index % COLS;
         
-        const gridNum = (row + 1) * COLS + col + 1;  // Calculate 1-9 number
-
-        // Clear canvas first
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Use bright neon green for better visibility
-        context.fillStyle = '#00FF00';
-        context.font = 'bold 20px Arial';  // Smaller font
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(`${gridNum}`, canvas.width/2, canvas.height/2);
-
-        // Create texture and material
-        const texture = new THREE.CanvasTexture(canvas);
-        
-        const material = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1.0,  // Full opacity for all cells
-            map: texture
-        });
-
-        const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { 
-            type: 'option',
-            index,
-            text,
-            selected: false 
-        };
-        
-        // Calculate position in grid layout
+        // Center the grid of options
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
         const y = -(row * (PANEL_HEIGHT + PANEL_SPACING));
         const z = 0;  // All panels in same plane
