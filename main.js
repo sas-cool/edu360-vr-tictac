@@ -138,6 +138,10 @@ const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
 
+// Add state tracking variables at the top level
+let selectedGridBox = null;
+let lockedGridBoxes = [];
+
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
@@ -215,6 +219,20 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
+        // Handle grid box selection
+        if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'grid') {
+            // Only allow selection if grid box isn't locked
+            if (!lockedGridBoxes.includes(currentIntersect)) {
+                // Reset previous grid box if any
+                if (selectedGridBox) {
+                    selectedGridBox.material.color.setHex(0xffffff);
+                }
+                selectedGridBox = currentIntersect;
+                selectedGridBox.material.color.setHex(0xff0000); // Red highlight
+            }
+        }
+
+        // Handle option selection (keeping existing functionality)
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
             // Toggle selection state
             currentIntersect.userData.selected = !currentIntersect.userData.selected;
