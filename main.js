@@ -17,9 +17,9 @@ camera.position.set(0, 1.6, 2.5);
 
 // Grid constants
 const cellSize = 0.6;
-const gap = 0.05;
+const spacing = 0.05;
 const gridSize = 3;
-const totalSize = (cellSize * 3) + (gap * 2);
+const totalSize = (cellSize * 3) + (spacing * 2);
 const halfSize = totalSize / 2;
 
 // Create grid group
@@ -249,120 +249,28 @@ renderer.xr.addEventListener('sessionstart', () => {
     optionHighlightFrame = frames.optionHighlightFrame;
     selectedOptionFrame = frames.selectedOptionFrame;
 
-    // Track selected grid and option
-    let selectedGrid = null;
-    let selectedOption = null;
-
-    // Function to transfer text from option to grid
-    function transferTextToGrid(grid, option) {
-        // Get option text
-        const optionText = option.userData.text;
-        if (!optionText) return;
-
-        // Create a canvas for the grid texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-
-        // Clear canvas with transparent background
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Set text properties
-        context.fillStyle = '#000000';
-        context.font = 'bold 100px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-
-        // Draw text in center
-        context.fillText(optionText, canvas.width/2, canvas.height/2);
-
-        // Create texture from canvas
-        const texture = new THREE.CanvasTexture(canvas);
-        
-        // Create new material that preserves grid's original properties
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.1
-        });
-
-        // Store old material properties
-        const oldOpacity = grid.material.opacity;
-        const oldColor = grid.material.color;
-
-        // Apply new material
-        grid.material = material;
-        
-        // Restore original properties
-        grid.material.opacity = oldOpacity;
-        grid.material.color = oldColor;
-        
-        // Store text in userData
-        grid.userData.text = optionText;
-
-        // Clear option text
-        const optionCanvas = option.material.map.image;
-        const optionContext = optionCanvas.getContext('2d');
-        optionContext.clearRect(0, 0, optionCanvas.width, optionCanvas.height);
-        option.material.map.needsUpdate = true;
-        option.userData.text = '';
-
-        // Reset selections
-        selectedGridFrame.visible = false;
-        selectedOptionFrame.visible = false;
-        selectedGrid = null;
-        selectedOption = null;
-    }
-
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
         // Handle grid selection when clicking
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'cell') {
-            // If grid already has text, don't allow selection
-            if (currentIntersect.userData.text) {
-                console.log('Grid already has text');
-                return;
-            }
-
             selectedGridFrame.position.copy(currentIntersect.position);
             selectedGridFrame.visible = true;
             gridHighlightFrame.visible = false;
-            selectedGrid = currentIntersect;
-
-            // If we have both selected grid and option, transfer text
-            if (selectedGrid && selectedOption) {
-                transferTextToGrid(selectedGrid, selectedOption);
-            }
         }
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // Don't allow selecting empty options
-            if (!currentIntersect.userData.text) {
-                console.log('Option is empty');
-                return;
-            }
-
             // If clicking currently selected option, unselect it
             if (selectedOptionFrame.visible && selectedOptionFrame.position.equals(currentIntersect.position)) {
                 selectedOptionFrame.visible = false;
                 optionHighlightFrame.visible = true;
-                selectedOption = null;
             } else {
                 // Select new option
                 selectedOptionFrame.position.copy(currentIntersect.position);
                 selectedOptionFrame.quaternion.copy(currentIntersect.quaternion);
                 selectedOptionFrame.visible = true;
                 optionHighlightFrame.visible = false;
-                selectedOption = currentIntersect;
-
-                // If we have both selected grid and option, transfer text
-                if (selectedGrid && selectedOption) {
-                    transferTextToGrid(selectedGrid, selectedOption);
-                }
             }
         }
     });
@@ -596,4 +504,46 @@ function updateOptionPanels() {
     optionsGroup.children.forEach(panel => {
         panel.lookAt(camera.position);
     });
+}
+
+// Create grid
+for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+        
+        // Create canvas for texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+
+        // If this is the center cell (1,1), add default text
+        if (i === 0 && j === 0) {
+            context.fillStyle = '#000000';
+            context.font = 'bold 100px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText('Testing', canvas.width/2, canvas.height/2);
+        }
+
+        // Create texture and material
+        const texture = new THREE.CanvasTexture(canvas);
+        const gridMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.1,
+            map: texture
+        });
+
+        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
+        gridMesh.position.set(i * (cellSize + spacing), j * (cellSize + spacing), 0);
+        gridMesh.userData = { type: 'cell' };
+        
+        // If this is the center cell, add the text to userData
+        if (i === 0 && j === 0) {
+            gridMesh.userData.text = 'Testing';
+        }
+        
+        gridGroup.add(gridMesh);
+    }
 }
