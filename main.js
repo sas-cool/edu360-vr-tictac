@@ -138,13 +138,6 @@ const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
 
-// Add state tracking variables at the top level
-let selectedGridBox = null;
-let selectedOption = null;
-let lockedGridBoxes = [];
-let lastClickTime = 0;
-const DOUBLE_CLICK_THRESHOLD = 300;
-
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
@@ -222,81 +215,57 @@ renderer.xr.addEventListener('sessionstart', () => {
     // Setup VR controller
     const session = renderer.xr.getSession();
     session.addEventListener('select', () => {
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastClickTime;
-
-        // Handle grid box selection
-        if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'grid') {
-            // Only allow selection if no option is selected and grid box isn't locked
-            if (!selectedOption && !lockedGridBoxes.includes(currentIntersect)) {
-                // Reset previous grid box if any
-                if (selectedGridBox) {
-                    selectedGridBox.material.color.setHex(0xffffff);
-                }
-                selectedGridBox = currentIntersect;
-                selectedGridBox.material.color.setHex(0xff0000); // Red highlight
-            }
-        }
-        
-        // Handle option selection and placement
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // Double click detection for selected option
-            if (timeDiff < DOUBLE_CLICK_THRESHOLD && currentIntersect === selectedOption && selectedGridBox) {
-                // Create clone for animation
-                const optionClone = currentIntersect.clone();
-                scene.add(optionClone);
+            // Toggle selection state
+            currentIntersect.userData.selected = !currentIntersect.userData.selected;
+            
+            // Get the text canvas from the texture
+            const texture = currentIntersect.material.map;
+            if (texture && texture.image) {
+                const canvas = texture.image;
+                const context = canvas.getContext('2d');
                 
-                // Get world positions
-                const startPos = new THREE.Vector3();
-                const endPos = new THREE.Vector3();
-                currentIntersect.getWorldPosition(startPos);
-                selectedGridBox.getWorldPosition(endPos);
+                // Clear canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // Setup animation
-                const duration = 1000; // 1 second
-                const startTime = Date.now();
+                // Set text properties
+                context.fillStyle = currentIntersect.userData.selected ? '#ff0000' : '#00ff00'; // Red when selected, Green when not
+                context.font = 'bold 28px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
                 
-                function animateOption() {
-                    const elapsed = Date.now() - startTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    
-                    optionClone.position.lerpVectors(startPos, endPos, progress);
-                    
-                    if (progress < 1) {
-                        requestAnimationFrame(animateOption);
+                // Word wrap text
+                const text = currentIntersect.userData.text;
+                const words = text.split(' ');
+                let line = '';
+                let lines = [];
+                const maxWidth = canvas.width - 20;
+                
+                for(let word of words) {
+                    const testLine = line + word + ' ';
+                    const metrics = context.measureText(testLine);
+                    if (metrics.width > maxWidth) {
+                        lines.push(line);
+                        line = word + ' ';
                     } else {
-                        // Animation complete
-                        scene.remove(optionClone);
-                        // Lock grid box and update its appearance
-                        lockedGridBoxes.push(selectedGridBox);
-                        selectedGridBox.material.color.setHex(0xffffff);
-                        // Remove option from panel
-                        optionsGroup.remove(currentIntersect);
-                        // Reset selection states
-                        selectedGridBox = null;
-                        selectedOption = null;
+                        line = testLine;
                     }
+                }
+                lines.push(line);
+                
+                // Center text vertically
+                let y = canvas.height/2 - (lines.length - 1) * 15;
+                
+                // Draw each line
+                for(let line of lines) {
+                    context.fillText(line.trim(), canvas.width/2, y);
+                    y += 30;
                 }
                 
-                animateOption();
-            } else {
-                // Single click - toggle option selection
-                if (selectedGridBox) { // Only allow option selection if we have a grid box selected
-                    // Reset previous option if any
-                    if (selectedOption && selectedOption !== currentIntersect) {
-                        selectedOption.userData.selected = false;
-                        updateOptionTexture(selectedOption, false);
-                    }
-                    
-                    // Toggle current option
-                    currentIntersect.userData.selected = !currentIntersect.userData.selected;
-                    selectedOption = currentIntersect.userData.selected ? currentIntersect : null;
-                    updateOptionTexture(currentIntersect, currentIntersect.userData.selected);
-                }
+                // Update the texture
+                texture.needsUpdate = true;
             }
         }
-        
-        lastClickTime = currentTime;
     });
 });
 
@@ -305,55 +274,6 @@ renderer.xr.addEventListener('sessionend', () => {
     gridGroup.position.set(0, 0, 0);
     optionsGroup.position.set(0, 0, 0);
 });
-
-// Helper function to update option texture
-function updateOptionTexture(option, selected) {
-    const texture = option.material.map;
-    if (texture && texture.image) {
-        const canvas = texture.image;
-        const context = canvas.getContext('2d');
-        
-        // Clear canvas
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Set text properties
-        context.fillStyle = selected ? '#ff0000' : '#00ff00';
-        context.font = 'bold 28px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        
-        // Word wrap text
-        const text = option.userData.text;
-        const words = text.split(' ');
-        let line = '';
-        let lines = [];
-        const maxWidth = canvas.width - 20;
-        
-        for(let word of words) {
-            const testLine = line + word + ' ';
-            const metrics = context.measureText(testLine);
-            if (metrics.width > maxWidth) {
-                lines.push(line);
-                line = word + ' ';
-            } else {
-                line = testLine;
-            }
-        }
-        lines.push(line);
-        
-        // Center text vertically
-        let y = canvas.height/2 - (lines.length - 1) * 15;
-        
-        // Draw each line
-        for(let line of lines) {
-            context.fillText(line.trim(), canvas.width/2, y);
-            y += 30;
-        }
-        
-        // Update the texture
-        texture.needsUpdate = true;
-    }
-}
 
 // Animation loop
 function animate() {
