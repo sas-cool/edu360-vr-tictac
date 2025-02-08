@@ -242,31 +242,15 @@ renderer.xr.addEventListener('sessionstart', () => {
             
             // First, unselect all options (including the current one)
             optionPanels.forEach(panel => {
-                panel.userData.selected = false;
-            });
-            
-            // Then toggle the clicked option's state
-            currentIntersect.userData.selected = true;
-            
-            // Update all option colors based on their states
-            optionPanels.forEach(panel => {
-                if (panel.material && panel.material.map) {
-                    const texture = panel.material.map;
-                    const canvas = texture.image;
-                    const context = canvas.getContext('2d');
-                    
-                    // Only change the fillStyle (text color)
-                    context.fillStyle = panel.userData.selected ? '#ff0000' : '#00ff00';
-                    
-                    // Redraw the text with existing properties
-                    context.font = 'bold 28px Arial';
-                    context.textAlign = 'center';
-                    context.textBaseline = 'middle';
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    context.fillText(panel.userData.text, canvas.width/2, canvas.height/2);
-                    texture.needsUpdate = true;
+                if (panel.material && panel.material.map && panel.userData.selected) {
+                    panel.userData.selected = false;
+                    panel.material.color.setHex(0x00ff00); // Set to green
                 }
             });
+            
+            // Then select the clicked option
+            currentIntersect.userData.selected = true;
+            currentIntersect.material.color.setHex(0xff0000); // Set to red
         }
     });
 });
