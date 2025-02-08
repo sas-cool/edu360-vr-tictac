@@ -151,6 +151,9 @@ const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
 
+// Add state tracking variable at the top level
+let selectedOption = null;
+
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
     antialias: true,
@@ -235,57 +238,22 @@ renderer.xr.addEventListener('sessionstart', () => {
             gridHighlightFrame.visible = false;
         }
 
-        // Keep existing option selection code
+        // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // Toggle selection state
+            // If there's a previously selected option, unselect it
+            if (selectedOption && selectedOption !== currentIntersect) {
+                selectedOption.userData.selected = false;
+                updateOptionTexture(selectedOption, false);
+            }
+
+            // Toggle current option
             currentIntersect.userData.selected = !currentIntersect.userData.selected;
             
-            // Get the text canvas from the texture
-            const texture = currentIntersect.material.map;
-            if (texture && texture.image) {
-                const canvas = texture.image;
-                const context = canvas.getContext('2d');
-                
-                // Clear canvas
-                context.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Set text properties
-                context.fillStyle = currentIntersect.userData.selected ? '#ff0000' : '#00ff00'; // Red when selected, Green when not
-                context.font = 'bold 28px Arial';
-                context.textAlign = 'center';
-                context.textBaseline = 'middle';
-                
-                // Word wrap text
-                const text = currentIntersect.userData.text;
-                const words = text.split(' ');
-                let line = '';
-                let lines = [];
-                const maxWidth = canvas.width - 20;
-                
-                for(let word of words) {
-                    const testLine = line + word + ' ';
-                    const metrics = context.measureText(testLine);
-                    if (metrics.width > maxWidth) {
-                        lines.push(line);
-                        line = word + ' ';
-                    } else {
-                        line = testLine;
-                    }
-                }
-                lines.push(line);
-                
-                // Center text vertically
-                let y = canvas.height/2 - (lines.length - 1) * 15;
-                
-                // Draw each line
-                for(let line of lines) {
-                    context.fillText(line.trim(), canvas.width/2, y);
-                    y += 30;
-                }
-                
-                // Update the texture
-                texture.needsUpdate = true;
-            }
+            // Update selected option reference
+            selectedOption = currentIntersect.userData.selected ? currentIntersect : null;
+            
+            // Update the texture
+            updateOptionTexture(currentIntersect, currentIntersect.userData.selected);
         }
     });
 });
@@ -295,6 +263,55 @@ renderer.xr.addEventListener('sessionend', () => {
     gridGroup.position.set(0, 0, 0);
     optionsGroup.position.set(0, 0, 0);
 });
+
+// Helper function to update option texture
+function updateOptionTexture(option, selected) {
+    const texture = option.material.map;
+    if (texture && texture.image) {
+        const canvas = texture.image;
+        const context = canvas.getContext('2d');
+        
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set text properties
+        context.fillStyle = selected ? '#ff0000' : '#00ff00';
+        context.font = 'bold 28px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        
+        // Word wrap text
+        const text = option.userData.text;
+        const words = text.split(' ');
+        let line = '';
+        let lines = [];
+        const maxWidth = canvas.width - 20;
+        
+        for(let word of words) {
+            const testLine = line + word + ' ';
+            const metrics = context.measureText(testLine);
+            if (metrics.width > maxWidth) {
+                lines.push(line);
+                line = word + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+        
+        // Center text vertically
+        let y = canvas.height/2 - (lines.length - 1) * 15;
+        
+        // Draw each line
+        for(let line of lines) {
+            context.fillText(line.trim(), canvas.width/2, y);
+            y += 30;
+        }
+        
+        // Update the texture
+        texture.needsUpdate = true;
+    }
+}
 
 // Animation loop
 function animate() {
