@@ -26,6 +26,54 @@ const halfSize = totalSize / 2;
 const gridGroup = new THREE.Group();
 scene.add(gridGroup);
 
+// Create grid boxes
+for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+        
+        // Create canvas for texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+
+        // Calculate grid number (1-9)
+        // Convert from -1,0,1 coordinates to 1-3 coordinates
+        const row = i + 2;  // -1->1, 0->2, 1->3
+        const col = j + 2;  // -1->1, 0->2, 1->3
+        const gridNum = (row - 1) * 3 + col;  // Calculate 1-9 number
+
+        // Clear canvas first
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Use bright neon green for better visibility
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 20px Arial';  // Smaller font
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(`${gridNum}`, canvas.width/2, canvas.height/2);
+
+        // Create texture and material
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        const gridMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,  // Full opacity for all cells
+            map: texture
+        });
+
+        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
+        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
+        gridMesh.userData = { 
+            type: 'cell',
+            text: `${gridNum}`
+        };
+        
+        gridGroup.add(gridMesh);
+    }
+}
+
 // Create options group
 const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
@@ -422,23 +470,49 @@ function createOptions(options) {
     
     options.forEach((text, index) => {
         const geometry = new THREE.PlaneGeometry(PANEL_WIDTH, PANEL_HEIGHT);
-        const texture = createOptionTexture(text);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
         
-        const panel = new THREE.Mesh(geometry, material);
-        panel.userData = { type: 'option', index, text, selected: false }; // Store text in userData
-        panel.name = `option-${index}`;
-        
-        // Calculate position in grid layout
+        // Create canvas for texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+
+        // Calculate grid number (1-9)
+        // Convert from -1,0,1 coordinates to 1-3 coordinates
         const row = Math.floor(index / COLS);
         const col = index % COLS;
         
-        // Center the grid of options
+        const gridNum = (row + 1) * COLS + col + 1;  // Calculate 1-9 number
+
+        // Clear canvas first
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Use bright neon green for better visibility
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 20px Arial';  // Smaller font
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(`${gridNum}`, canvas.width/2, canvas.height/2);
+
+        // Create texture and material
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,  // Full opacity for all cells
+            map: texture
+        });
+
+        const panel = new THREE.Mesh(geometry, material);
+        panel.userData = { 
+            type: 'option',
+            index,
+            text,
+            selected: false 
+        };
+        
+        // Calculate position in grid layout
         const x = (col - 1) * (PANEL_WIDTH + PANEL_SPACING);
         const y = -(row * (PANEL_HEIGHT + PANEL_SPACING));
         const z = 0;  // All panels in same plane
@@ -504,54 +578,4 @@ function updateOptionPanels() {
     optionsGroup.children.forEach(panel => {
         panel.lookAt(camera.position);
     });
-}
-
-// Create grid
-for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-        const gridGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
-        
-        // Create canvas for texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-
-        // If this is the center cell (1,1), add default text
-        if (i === 0 && j === 0) {
-            // Clear canvas first
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Use bright neon green for better visibility
-            context.fillStyle = '#00FF00';
-            context.font = 'bold 50px Arial';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText('Testing', canvas.width/2, canvas.height/2);
-        }
-
-        // Create texture and material
-        const texture = new THREE.CanvasTexture(canvas);
-        
-        // Create two materials:
-        // 1. For the grid background (transparent)
-        // 2. For the text (fully opaque)
-        const gridMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: i === 0 && j === 0 ? 1.0 : 0.1, // Full opacity for center cell
-            map: texture
-        });
-
-        const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
-        gridMesh.position.set(i * (cellSize + gap), j * (cellSize + gap), 0);
-        gridMesh.userData = { type: 'cell' };
-        
-        // If this is the center cell, add the text to userData
-        if (i === 0 && j === 0) {
-            gridMesh.userData.text = 'Testing';
-        }
-        
-        gridGroup.add(gridMesh);
-    }
 }
