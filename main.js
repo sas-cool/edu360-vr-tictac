@@ -61,45 +61,56 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Create collision planes for grid cells
+// Create collision planes and text for each cell
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const invisibleMaterial = new THREE.MeshBasicMaterial({
+    visible: false,
+    side: THREE.DoubleSide
+});
 
-for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-        // Create canvas for texture
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        // Calculate exact position for this cell
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        
+        // Create collision plane
+        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
+        plane.position.set(x, y, -2);
+        plane.userData = { type: 'cell', row, col };
+        gridGroup.add(plane);
+
+        // Create canvas for text texture
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 256;
         const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
 
         // Calculate grid number (1-9)
-        // Convert from -1,0,1 coordinates to 1-3 coordinates
-        const row = -j + 2;  // Flip j to match grid layout (-1->3, 0->2, 1->1)
-        const col = i + 2;   // -1->1, 0->2, 1->3
-        const gridNum = (row - 1) * 3 + col;  // Calculate 1-9 number
+        const gridNum = row * 3 + col + 1;
 
-        // Clear canvas first
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Use bright neon green for better visibility
+        // Draw text
         context.fillStyle = '#00FF00';
-        context.font = 'bold 20px Arial';  // Smaller font
+        context.font = 'bold 20px Arial';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
 
-        // Create texture and material
+        // Create text plane with same size as collision plane
         const texture = new THREE.CanvasTexture(canvas);
-        const cellMaterial = new THREE.MeshBasicMaterial({
+        const textMaterial = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             opacity: 1.0
         });
 
-        const cellPlane = new THREE.Mesh(cellPlaneGeometry, cellMaterial);
-        cellPlane.position.set(i * (cellSize + gap), j * (cellSize + gap), 0.01);
-        cellPlane.userData = { type: 'cell', text: `Testing${gridNum}` };
-        gridGroup.add(cellPlane);
+        // Create text plane and position it exactly where the collision plane is
+        const textPlane = new THREE.Mesh(cellPlaneGeometry, textMaterial);
+        textPlane.position.copy(plane.position);
+        textPlane.position.z = 0.01; // Slightly in front
+        textPlane.userData = { type: 'cell', text: `Testing${gridNum}` };
+        gridGroup.add(textPlane);
     }
 }
 
