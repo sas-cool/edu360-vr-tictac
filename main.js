@@ -63,14 +63,11 @@ gridGroup.add(gridLines);
 
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
-const textPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.7, cellSize * 0.7); // Even smaller for text
+const textPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.6, cellSize * 0.6); // Smaller text planes
 const invisibleMaterial = new THREE.MeshBasicMaterial({
     visible: false,
     side: THREE.DoubleSide
 });
-
-// Store grid cells to get their positions
-const gridCells = [];
 
 // Add collision planes for each cell
 for (let row = 0; row < gridSize; row++) {
@@ -83,42 +80,44 @@ for (let row = 0; row < gridSize; row++) {
         plane.position.set(x, y, z);
         plane.userData = { type: 'cell', row, col };
         gridGroup.add(plane);
-        gridCells.push(plane); // Store the plane to use its position later
+
+        // Create text exactly on grid lines
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate grid number (1-9)
+        const gridNum = row * 3 + col + 1;
+
+        // Draw text
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 25px Arial'; // Slightly smaller font
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
+
+        // Create text plane
+        const texture = new THREE.CanvasTexture(canvas);
+        const textMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 1.0,
+            side: THREE.DoubleSide // Make text visible from both sides
+        });
+
+        // Position text exactly where grid lines intersect
+        const textPlane = new THREE.Mesh(textPlaneGeometry, textMaterial);
+        // Use grid line positions (not collision plane positions)
+        textPlane.position.set(
+            col - 1, // -1, 0, 1 for columns
+            -(row - 1), // 1, 0, -1 for rows
+            0 // Same z-position as grid lines
+        );
+        textPlane.userData = { type: 'text', text: `Testing${gridNum}` };
+        gridGroup.add(textPlane);
     }
-}
-
-// Now add text using the exact same positions as the grid cells
-for (let i = 0; i < gridCells.length; i++) {
-    const cell = gridCells[i];
-    
-    // Create canvas for text
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw text
-    context.fillStyle = '#00FF00';
-    context.font = 'bold 30px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(`Testing${i + 1}`, canvas.width/2, canvas.height/2);
-
-    // Create text plane
-    const texture = new THREE.CanvasTexture(canvas);
-    const textMaterial = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 1.0
-    });
-
-    // Create text plane and position it exactly where the cell is
-    const textPlane = new THREE.Mesh(textPlaneGeometry, textMaterial);
-    textPlane.position.copy(cell.position);
-    textPlane.position.z = 0.01; // Slightly in front
-    textPlane.userData = { type: 'text', text: `Testing${i + 1}` };
-    gridGroup.add(textPlane);
 }
 
 // Enhanced lighting
