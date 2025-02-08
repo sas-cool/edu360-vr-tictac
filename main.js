@@ -133,6 +133,19 @@ const optionHighlightFrame = new THREE.Mesh(
 optionHighlightFrame.visible = false;
 optionsGroup.add(optionHighlightFrame);
 
+// Create selected option frame with red color
+const selectedOptionFrame = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.4, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    })
+);
+selectedOptionFrame.visible = false;
+optionsGroup.add(selectedOptionFrame);
+
 // Create reticle
 const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
 const reticleMaterial = new THREE.MeshBasicMaterial({
@@ -237,20 +250,17 @@ renderer.xr.addEventListener('sessionstart', () => {
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // Get all option panels
-            const optionPanels = optionsGroup.children[0]?.children || [];
-            
-            // First, unselect all options (including the current one)
-            optionPanels.forEach(panel => {
-                if (panel.material && panel.material.map && panel.userData.selected) {
-                    panel.userData.selected = false;
-                    panel.material.color.setHex(0x00ff00); // Set to green
-                }
-            });
-            
-            // Then select the clicked option
-            currentIntersect.userData.selected = true;
-            currentIntersect.material.color.setHex(0xff0000); // Set to red
+            // If clicking currently selected option, unselect it
+            if (selectedOptionFrame.visible && selectedOptionFrame.position.equals(currentIntersect.position)) {
+                selectedOptionFrame.visible = false;
+                optionHighlightFrame.visible = true;
+            } else {
+                // Select new option
+                selectedOptionFrame.position.copy(currentIntersect.position);
+                selectedOptionFrame.quaternion.copy(currentIntersect.quaternion);
+                selectedOptionFrame.visible = true;
+                optionHighlightFrame.visible = false;
+            }
         }
     });
 });
@@ -303,10 +313,10 @@ function animate() {
                 currentIntersect = intersect.object;
                 currentHighlight = 'option';
                 
-                // Change the hovered option to red
-                if (intersect.object.material) {
-                    intersect.object.material.color.setHex(0xff0000);
-                }
+                optionHighlightFrame.position.copy(intersect.object.position);
+                optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
+                optionHighlightFrame.visible = true;
+                gridHighlightFrame.visible = false;
             }
         } else {
             if (currentIntersect) {
