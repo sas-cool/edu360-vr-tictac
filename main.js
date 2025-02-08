@@ -127,11 +127,24 @@ selectedGridFrame.visible = false;
 gridGroup.add(selectedGridFrame);
 
 const optionHighlightFrame = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 0.2), // Match exact option panel size
+    new THREE.PlaneGeometry(0.4, 0.2),
     optionHighlightMaterial
 );
 optionHighlightFrame.visible = false;
 optionsGroup.add(optionHighlightFrame);
+
+// Create selected option frame with red color
+const selectedOptionFrame = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.4, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+    })
+);
+selectedOptionFrame.visible = false;
+optionsGroup.add(selectedOptionFrame);
 
 // Create reticle
 const reticleGeometry = new THREE.RingGeometry(0.002, 0.003, 32);
@@ -150,9 +163,6 @@ scene.add(camera);
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
-
-// Add state tracking variable at the top level
-let currentSelectedOption = null;
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -240,47 +250,15 @@ renderer.xr.addEventListener('sessionstart', () => {
 
         // Handle option selection
         if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-            // Get all option panels
-            const optionPanels = optionsGroup.children[0]?.children || [];
-            
-            // If clicking the currently selected option, unselect it
-            if (currentIntersect === currentSelectedOption) {
-                currentSelectedOption = null;
-                // Reset all options to green
-                optionPanels.forEach(panel => {
-                    if (panel.material && panel.material.map) {
-                        const texture = panel.material.map;
-                        const canvas = texture.image;
-                        const context = canvas.getContext('2d');
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                        context.fillStyle = '#00ff00';
-                        context.font = 'bold 28px Arial';
-                        context.textAlign = 'center';
-                        context.textBaseline = 'middle';
-                        const text = panel.userData.text;
-                        context.fillText(text, canvas.width/2, canvas.height/2);
-                        texture.needsUpdate = true;
-                    }
-                });
+            // If clicking the currently selected option (where red frame is), unselect it
+            if (selectedOptionFrame.visible && selectedOptionFrame.position.equals(currentIntersect.position)) {
+                selectedOptionFrame.visible = false;
+                optionHighlightFrame.visible = true;
             } else {
-                // Selecting a new option
-                currentSelectedOption = currentIntersect;
-                // Set all options to green except the selected one
-                optionPanels.forEach(panel => {
-                    if (panel.material && panel.material.map) {
-                        const texture = panel.material.map;
-                        const canvas = texture.image;
-                        const context = canvas.getContext('2d');
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                        context.fillStyle = (panel === currentSelectedOption) ? '#ff0000' : '#00ff00';
-                        context.font = 'bold 28px Arial';
-                        context.textAlign = 'center';
-                        context.textBaseline = 'middle';
-                        const text = panel.userData.text;
-                        context.fillText(text, canvas.width/2, canvas.height/2);
-                        texture.needsUpdate = true;
-                    }
-                });
+                // Select new option
+                selectedOptionFrame.position.copy(currentIntersect.position);
+                selectedOptionFrame.visible = true;
+                optionHighlightFrame.visible = false;
             }
         }
     });
