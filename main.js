@@ -69,15 +69,14 @@ const invisibleMaterial = new THREE.MeshBasicMaterial({
 });
 
 // Create debug marker geometries
-const markerGeometry = new THREE.SphereGeometry(0.02); // Small sphere
-const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red for grid intersections
+const markerGeometry = new THREE.SphereGeometry(0.02);
 const blueMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Blue for collision planes
-const greenMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green for text positions
+const greenMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green for proposed text positions
 
 // Add collision planes and debug markers for each cell
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-        // Collision plane position
+        // Calculate position using collision plane formula
         const x = (col * cellSize) - halfSize + cellSize/2;
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -2;
@@ -91,25 +90,12 @@ for (let row = 0; row < gridSize; row++) {
         // Add blue marker at collision plane center
         const blueMarker = new THREE.Mesh(markerGeometry, blueMaterial);
         blueMarker.position.copy(plane.position);
-        blueMarker.position.z = 0; // Move to front
+        blueMarker.position.z = 0;
         gridGroup.add(blueMarker);
 
-        // Add red marker at grid line intersection
-        const redMarker = new THREE.Mesh(markerGeometry, redMaterial);
-        redMarker.position.set(
-            col - 1,  // -1, 0, 1 for columns
-            -(row - 1),  // 1, 0, -1 for rows
-            0
-        );
-        gridGroup.add(redMarker);
-
-        // Add green marker at where we were trying to place text
+        // Add green marker using the SAME position calculation
         const greenMarker = new THREE.Mesh(markerGeometry, greenMaterial);
-        greenMarker.position.set(
-            col - 1,  // Same as last attempt
-            -(row - 1),
-            0
-        );
+        greenMarker.position.set(x, y, 0);
         gridGroup.add(greenMarker);
     }
 }
