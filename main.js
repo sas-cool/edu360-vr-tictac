@@ -63,60 +63,54 @@ gridGroup.add(gridLines);
 
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
-const textPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.6, cellSize * 0.6); // Smaller text planes
 const invisibleMaterial = new THREE.MeshBasicMaterial({
     visible: false,
     side: THREE.DoubleSide
 });
 
-// Add collision planes for each cell
+// Create debug marker geometries
+const markerGeometry = new THREE.SphereGeometry(0.02); // Small sphere
+const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red for grid intersections
+const blueMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Blue for collision planes
+const greenMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green for text positions
+
+// Add collision planes and debug markers for each cell
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
+        // Collision plane position
         const x = (col * cellSize) - halfSize + cellSize/2;
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -2;
         
+        // Add collision plane
         const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
         plane.position.set(x, y, z);
         plane.userData = { type: 'cell', row, col };
         gridGroup.add(plane);
 
-        // Create text exactly on grid lines
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        // Add blue marker at collision plane center
+        const blueMarker = new THREE.Mesh(markerGeometry, blueMaterial);
+        blueMarker.position.copy(plane.position);
+        blueMarker.position.z = 0; // Move to front
+        gridGroup.add(blueMarker);
 
-        // Calculate grid number (1-9)
-        const gridNum = row * 3 + col + 1;
-
-        // Draw text
-        context.fillStyle = '#00FF00';
-        context.font = 'bold 25px Arial'; // Slightly smaller font
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(`Testing${gridNum}`, canvas.width/2, canvas.height/2);
-
-        // Create text plane
-        const texture = new THREE.CanvasTexture(canvas);
-        const textMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 1.0,
-            side: THREE.DoubleSide // Make text visible from both sides
-        });
-
-        // Position text exactly where grid lines intersect
-        const textPlane = new THREE.Mesh(textPlaneGeometry, textMaterial);
-        // Use grid line positions (not collision plane positions)
-        textPlane.position.set(
-            col - 1, // -1, 0, 1 for columns
-            -(row - 1), // 1, 0, -1 for rows
-            0 // Same z-position as grid lines
+        // Add red marker at grid line intersection
+        const redMarker = new THREE.Mesh(markerGeometry, redMaterial);
+        redMarker.position.set(
+            col - 1,  // -1, 0, 1 for columns
+            -(row - 1),  // 1, 0, -1 for rows
+            0
         );
-        textPlane.userData = { type: 'text', text: `Testing${gridNum}` };
-        gridGroup.add(textPlane);
+        gridGroup.add(redMarker);
+
+        // Add green marker at where we were trying to place text
+        const greenMarker = new THREE.Mesh(markerGeometry, greenMaterial);
+        greenMarker.position.set(
+            col - 1,  // Same as last attempt
+            -(row - 1),
+            0
+        );
+        gridGroup.add(greenMarker);
     }
 }
 
