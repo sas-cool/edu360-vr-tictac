@@ -22,13 +22,19 @@ const gridSize = 3;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
-// Create grid group
+// Create grid group at a fixed world position
 const gridGroup = new THREE.Group();
 scene.add(gridGroup);
+gridGroup.position.set(0, 1.6, -1.5); // Keep original position
+gridGroup.matrixAutoUpdate = false;    // Prevent auto-updates
+gridGroup.updateMatrix();              // Update once
 
-// Create options group
+// Create options group at a fixed world position
 const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
+optionsGroup.position.set(0, 0.8, -0.8); // Keep original position
+optionsGroup.matrixAutoUpdate = false;    // Prevent auto-updates
+optionsGroup.updateMatrix();              // Update once
 
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
@@ -235,31 +241,9 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Handle touch button click - now repositions to default fixed position
-document.getElementById('touch-button').addEventListener('click', () => {
-    if (renderer.xr.isPresenting) {
-        // Reset to default fixed positions
-        gridGroup.position.set(0, 1.6, -2);
-        optionsGroup.position.set(0, 1.2, -1.5);
-        gridGroup.rotation.set(0, 0, 0);
-        optionsGroup.rotation.set(0, 0, 0);
-    }
-});
-
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    
-    // Position grid and options at fixed world positions
-    // Grid at eye level (1.6m) and 2m in front
-    gridGroup.position.set(0, 1.6, -2);
-    // Options slightly below and closer
-    optionsGroup.position.set(0, 1.2, -1.5);
-    
-    // Make them face forward (negative z)
-    gridGroup.rotation.set(0, 0, 0);
-    optionsGroup.rotation.set(0, 0, 0);
-    
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -300,6 +284,24 @@ renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
     gridGroup.visible = false;
     optionsGroup.visible = false;
+});
+
+// Handle touch button click - reset to original fixed position
+document.getElementById('touch-button').addEventListener('click', () => {
+    if (renderer.xr.isPresenting) {
+        gridGroup.matrixAutoUpdate = true;     // Enable updates temporarily
+        optionsGroup.matrixAutoUpdate = true;
+        
+        // Reset to original positions
+        gridGroup.position.set(0, 1.6, -1.5);
+        optionsGroup.position.set(0, 0.8, -0.8);
+        
+        // Update once and disable auto-updates
+        gridGroup.updateMatrix();
+        optionsGroup.updateMatrix();
+        gridGroup.matrixAutoUpdate = false;
+        optionsGroup.matrixAutoUpdate = false;
+    }
 });
 
 // Animation loop
