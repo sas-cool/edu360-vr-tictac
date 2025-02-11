@@ -61,70 +61,6 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Function to create text material
-function createTextMaterial(text) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#00FF00';
-    context.font = 'bold 25px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width/2, canvas.height/2);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    return new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide
-    });
-}
-
-// Function to redraw all grid boxes with text
-function redrawGridBoxes() {
-    // Remove all existing grid boxes
-    gridGroup.children = gridGroup.children.filter(child => !(child.userData && child.userData.type === 'cell'));
-    
-    // Add new grid boxes with text
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            const x = (col * cellSize) - halfSize + cellSize/2;
-            const y = -(row * cellSize) + halfSize - cellSize/2;
-            const z = -2;
-            
-            // Create text for testing
-            const text = Math.floor(Math.random() * 1000).toString();
-            
-            const plane = new THREE.Mesh(
-                new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
-                createTextMaterial(text)
-            );
-            plane.position.set(x, y, z);
-            plane.userData = { type: 'cell', row, col };
-            gridGroup.add(plane);
-        }
-    }
-}
-
-// Initial grid setup with "Testing" text
-for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-        const x = (col * cellSize) - halfSize + cellSize/2;
-        const y = -(row * cellSize) + halfSize - cellSize/2;
-        const z = -2;
-        
-        const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
-            createTextMaterial("Testing")
-        );
-        plane.position.set(x, y, z);
-        plane.userData = { type: 'cell', row, col };
-        gridGroup.add(plane);
-    }
-}
-
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
 const invisibleMaterial = new THREE.MeshBasicMaterial({
@@ -493,6 +429,8 @@ function createOptions(options) {
             opacity: 0.9,
             side: THREE.DoubleSide
         });
+        material.needsUpdate = true;
+        material.map.needsUpdate = true;
         
         const panel = new THREE.Mesh(geometry, material);
         panel.userData = { type: 'option', index, text, selected: false }; // Store text in userData
@@ -569,9 +507,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Handle touch button click - now just redraws with random numbers
-document.getElementById('touch-button').addEventListener('click', () => {
-    console.log("Touch button clicked - redrawing grid...");
-    redrawGridBoxes();
-});
