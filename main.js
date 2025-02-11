@@ -61,6 +61,70 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
+// Function to create text material
+function createTextMaterial(text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#00FF00';
+    context.font = 'bold 25px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(text, canvas.width/2, canvas.height/2);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+}
+
+// Function to redraw all grid boxes with text
+function redrawGridBoxes() {
+    // Remove all existing grid boxes
+    gridGroup.children = gridGroup.children.filter(child => !(child.userData && child.userData.type === 'cell'));
+    
+    // Add new grid boxes with text
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const x = (col * cellSize) - halfSize + cellSize/2;
+            const y = -(row * cellSize) + halfSize - cellSize/2;
+            const z = -2;
+            
+            // Create text for testing
+            const text = Math.floor(Math.random() * 1000).toString();
+            
+            const plane = new THREE.Mesh(
+                new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
+                createTextMaterial(text)
+            );
+            plane.position.set(x, y, z);
+            plane.userData = { type: 'cell', row, col };
+            gridGroup.add(plane);
+        }
+    }
+}
+
+// Initial grid setup with "Testing" text
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
+        
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
+            createTextMaterial("Testing")
+        );
+        plane.position.set(x, y, z);
+        plane.userData = { type: 'cell', row, col };
+        gridGroup.add(plane);
+    }
+}
+
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
 const invisibleMaterial = new THREE.MeshBasicMaterial({
@@ -235,68 +299,6 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Track game state and objects
-let gridState = Array(9).fill('');
-let currentOptions = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6", "Option 7", "Option 8", "Option 9"];
-let needsUpdate = false;
-
-// Function to properly dispose of materials and textures
-function disposeMaterial(material) {
-    if (!material) return;
-    if (material.map) {
-        material.map.dispose();
-    }
-    material.dispose();
-}
-
-// Function to create text material
-function createTextMaterial(text) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#00FF00';
-    context.font = 'bold 25px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width/2, canvas.height/2);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    return new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide
-    });
-}
-
-// Function to update a specific grid cell
-function updateGridCell(row, col, text) {
-    const index = row * 3 + col;
-    gridState[index] = text;
-    
-    // Find the cell in the grid
-    const cell = gridGroup.children.find(child => 
-        child.userData && 
-        child.userData.type === 'cell' && 
-        child.userData.row === row && 
-        child.userData.col === col
-    );
-    
-    if (cell) {
-        // Clean up old material if it exists
-        if (cell.material && cell.material.map) {
-            cell.material.map.dispose();
-        }
-        if (cell.material) {
-            cell.material.dispose();
-        }
-        
-        // Create new material with text
-        cell.material = createTextMaterial(text);
-    }
-}
-
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -344,20 +346,9 @@ renderer.xr.addEventListener('sessionend', () => {
     optionsGroup.position.set(0, 0, 0);
 });
 
-// Modified animation loop
+// Animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
-        if (needsUpdate) {
-            // Update grid cells based on state
-            gridGroup.children.forEach(child => {
-                if (child.userData && child.userData.type === 'cell') {
-                    const index = child.userData.row * 3 + child.userData.col;
-                    updateGridCell(child.userData.row, child.userData.col, gridState[index]);
-                }
-            });
-            needsUpdate = false;
-        }
-
         const time = Date.now() * 0.001;
         
         // Pulse the reticle
@@ -578,3 +569,9 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
+
+// Handle touch button click - now just redraws with random numbers
+document.getElementById('touch-button').addEventListener('click', () => {
+    console.log("Touch button clicked - redrawing grid...");
+    redrawGridBoxes();
+});
