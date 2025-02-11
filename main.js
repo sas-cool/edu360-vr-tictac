@@ -235,59 +235,6 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Function to center grid based on current view
-function centerGridToCurrentView() {
-    if (!renderer.xr.isPresenting) return;
-    
-    const session = renderer.xr.getSession();
-    session.requestReferenceSpace('local').then(function(referenceSpace) {
-        session.requestAnimationFrame((time, frame) => {
-            if (!frame) return;
-            
-            const pose = frame.getViewerPose(referenceSpace);
-            if (!pose) return;
-            
-            // Get camera position and orientation
-            const view = pose.views[0];
-            const position = view.transform.position;
-            const orientation = view.transform.orientation;
-            
-            // Create a vector pointing forward from the camera
-            const forward = new THREE.Vector3(0, 0, -2);
-            const quaternion = new THREE.Quaternion(
-                orientation.x,
-                orientation.y,
-                orientation.z,
-                orientation.w
-            );
-            forward.applyQuaternion(quaternion);
-            
-            // Position grid and options in front of the camera
-            const targetPosition = new THREE.Vector3(
-                position.x + forward.x,
-                position.y + forward.y,
-                position.z + forward.z
-            );
-            
-            gridGroup.position.copy(targetPosition);
-            optionsGroup.position.copy(targetPosition);
-            
-            // Make grid face the camera
-            gridGroup.lookAt(position.x, position.y, position.z);
-            optionsGroup.lookAt(position.x, position.y, position.z);
-            
-            // Update matrices
-            gridGroup.updateMatrixWorld(true);
-            optionsGroup.updateMatrixWorld(true);
-        });
-    });
-}
-
-// Add center button handler
-document.getElementById('touch-button').addEventListener('click', () => {
-    centerGridToCurrentView();
-});
-
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -558,3 +505,27 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
+
+// Handle touch button click
+document.getElementById('touch-button').addEventListener('click', () => {
+    if (renderer.xr.isPresenting) {
+        // Get current camera position and direction
+        const camera = renderer.xr.getCamera();
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        
+        // Calculate position 2 meters in front of camera
+        const targetPosition = new THREE.Vector3();
+        targetPosition.copy(camera.position);
+        direction.multiplyScalar(2);
+        targetPosition.add(direction);
+        
+        // Move grid and options to new position
+        gridGroup.position.copy(targetPosition);
+        optionsGroup.position.copy(targetPosition);
+        
+        // Make them face the camera
+        gridGroup.lookAt(camera.position);
+        optionsGroup.lookAt(camera.position);
+    }
+});
