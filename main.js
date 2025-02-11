@@ -235,35 +235,31 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Function to center grid and options in front of user
-function centerToUser() {
-    if (!renderer.xr.isPresenting) return;
-    
-    const camera = renderer.xr.getCamera();
-    
-    // Get camera's forward direction (negative z-axis)
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    
-    // Position 2 meters in front and at eye level (1.6 meters)
-    const targetPosition = new THREE.Vector3();
-    targetPosition.copy(camera.position)                    // Start at camera position
-                .add(forward.multiplyScalar(2));           // Move 2 meters forward
-    targetPosition.y = camera.position.y;                  // Keep at eye level
-    
-    // Update grid and options position
-    gridGroup.position.copy(targetPosition);
-    optionsGroup.position.copy(targetPosition);
-    
-    // Ensure they face the user
-    gridGroup.quaternion.copy(camera.quaternion);
-    optionsGroup.quaternion.copy(camera.quaternion);
-}
+// Handle touch button click - now repositions to default fixed position
+document.getElementById('touch-button').addEventListener('click', () => {
+    if (renderer.xr.isPresenting) {
+        // Reset to default fixed positions
+        gridGroup.position.set(0, 1.6, -2);
+        optionsGroup.position.set(0, 1.2, -1.5);
+        gridGroup.rotation.set(0, 0, 0);
+        optionsGroup.rotation.set(0, 0, 0);
+    }
+});
 
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    centerToUser();
+    
+    // Position grid and options at fixed world positions
+    // Grid at eye level (1.6m) and 2m in front
+    gridGroup.position.set(0, 1.6, -2);
+    // Options slightly below and closer
+    optionsGroup.position.set(0, 1.2, -1.5);
+    
+    // Make them face forward (negative z)
+    gridGroup.rotation.set(0, 0, 0);
+    optionsGroup.rotation.set(0, 0, 0);
+    
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -302,25 +298,17 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
-    gridGroup.position.set(0, 0, 0);
-    optionsGroup.position.set(0, 0, 0);
+    gridGroup.visible = false;
+    optionsGroup.visible = false;
 });
 
 // Animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
-        if (renderer.xr.isPresenting) {
-            const camera = renderer.xr.getCamera();
-            
-            // Always make grid and options face the user
-            if (gridGroup && optionsGroup) {
-                gridGroup.quaternion.copy(camera.quaternion);
-                optionsGroup.quaternion.copy(camera.quaternion);
-            }
-        }
+        const time = Date.now() * 0.001;
         
         // Pulse the reticle
-        reticle.scale.setScalar(1 + Math.sin(Date.now() * 0.001 * 2) * 0.1);
+        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
         
         // Update raycaster
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -537,8 +525,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Handle touch button click
-document.getElementById('touch-button').addEventListener('click', () => {
-    centerToUser();
-});
