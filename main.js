@@ -30,6 +30,71 @@ scene.add(gridGroup);
 const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
 
+// Game state to track grid contents
+let gameState = Array(9).fill('');  // Empty strings for empty cells
+let selectedCell = null;  // Track which cell is selected
+
+// Function to create a grid box with optional text
+function createGridBox(row, col, text = '') {
+    const x = (col * cellSize) - halfSize + cellSize/2;
+    const y = -(row * cellSize) + halfSize - cellSize/2;
+    const z = -2;
+
+    // If there's text, create a textured material
+    let material;
+    if (text) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw text
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 25px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width/2, canvas.height/2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+    } else {
+        // Empty cell - invisible but interactive
+        material = new THREE.MeshBasicMaterial({
+            visible: false,
+            side: THREE.DoubleSide
+        });
+    }
+
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9), material);
+    plane.position.set(x, y, z);
+    plane.userData = { type: 'cell', row, col, text };
+    return plane;
+}
+
+// Function to redraw entire grid
+function redrawGrid() {
+    // Remove existing grid boxes
+    gridGroup.children = gridGroup.children.filter(child => 
+        child instanceof THREE.LineSegments  // Keep grid lines
+    );
+
+    // Redraw all grid boxes with their current state
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const index = row * 3 + col;
+            const text = gameState[index];
+            const box = createGridBox(row, col, text);
+            gridGroup.add(box);
+        }
+    }
+}
+
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
     color: 0x00ff00,
@@ -61,47 +126,8 @@ gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Create grid boxes with text
-const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
-
-// Add collision planes with text for each cell
-for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-        // Calculate position
-        const x = (col * cellSize) - halfSize + cellSize/2;
-        const y = -(row * cellSize) + halfSize - cellSize/2;
-        const z = -2;
-
-        // Create canvas for text texture
-        const canvas = document.createElement('canvas');
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw text (using option text instead of "Testing")
-        context.fillStyle = '#00FF00';
-        context.font = 'bold 25px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(`Option ${row * 3 + col + 1}`, canvas.width/2, canvas.height/2);
-
-        // Create texture and material
-        const texture = new THREE.CanvasTexture(canvas);
-        const cellMaterial = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.7, // Semi-transparent
-            side: THREE.DoubleSide
-        });
-
-        // Create grid box with text
-        const plane = new THREE.Mesh(cellPlaneGeometry, cellMaterial);
-        plane.position.set(x, y, z);
-        plane.userData = { type: 'cell', row, col };
-        gridGroup.add(plane);
-    }
-}
+// Create initial empty grid
+redrawGrid();  // Draw initial empty grid
 
 // Enhanced lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -525,4 +551,38 @@ function updateOptionPanels() {
     optionsGroup.children.forEach(panel => {
         panel.lookAt(camera.position);
     });
+}
+
+// Modify the touch button click handler
+touchButton.addEventListener('click', () => {
+    if (selectedCell !== null && selectedOption !== null) {
+        const row = Math.floor(selectedCell / 3);
+        const col = selectedCell % 3;
+        const index = row * 3 + col;
+        
+        // Update game state
+        gameState[index] = selectedOption.userData.text;
+        
+        // Redraw entire grid with updated state
+        redrawGrid();
+        
+        // Reset selection state
+        selectedCell = null;
+        selectedOption = null;
+        
+        // Remove highlights
+        highlightCell(null);
+        highlightOption(null);
+    }
+});
+
+// Update cell selection handler
+function onCellSelect(intersection) {
+    const cell = intersection.object;
+    if (cell.userData.type === 'cell') {
+        const row = cell.userData.row;
+        const col = cell.userData.col;
+        selectedCell = row * 3 + col;
+        highlightCell(cell);
+    }
 }
