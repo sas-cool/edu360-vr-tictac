@@ -235,6 +235,59 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
+// Function to center grid based on current view
+function centerGridToCurrentView() {
+    if (!renderer.xr.isPresenting) return;
+    
+    const session = renderer.xr.getSession();
+    session.requestReferenceSpace('local').then(function(referenceSpace) {
+        session.requestAnimationFrame((time, frame) => {
+            if (!frame) return;
+            
+            const pose = frame.getViewerPose(referenceSpace);
+            if (!pose) return;
+            
+            // Get camera position and orientation
+            const view = pose.views[0];
+            const position = view.transform.position;
+            const orientation = view.transform.orientation;
+            
+            // Create a vector pointing forward from the camera
+            const forward = new THREE.Vector3(0, 0, -2);
+            const quaternion = new THREE.Quaternion(
+                orientation.x,
+                orientation.y,
+                orientation.z,
+                orientation.w
+            );
+            forward.applyQuaternion(quaternion);
+            
+            // Position grid and options in front of the camera
+            const targetPosition = new THREE.Vector3(
+                position.x + forward.x,
+                position.y + forward.y,
+                position.z + forward.z
+            );
+            
+            gridGroup.position.copy(targetPosition);
+            optionsGroup.position.copy(targetPosition);
+            
+            // Make grid face the camera
+            gridGroup.lookAt(position.x, position.y, position.z);
+            optionsGroup.lookAt(position.x, position.y, position.z);
+            
+            // Update matrices
+            gridGroup.updateMatrixWorld(true);
+            optionsGroup.updateMatrixWorld(true);
+        });
+    });
+}
+
+// Add center button handler
+document.getElementById('touch-button').addEventListener('click', () => {
+    centerGridToCurrentView();
+});
+
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -429,8 +482,6 @@ function createOptions(options) {
             opacity: 0.9,
             side: THREE.DoubleSide
         });
-        material.needsUpdate = true;
-        material.map.needsUpdate = true;
         
         const panel = new THREE.Mesh(geometry, material);
         panel.userData = { type: 'option', index, text, selected: false }; // Store text in userData
