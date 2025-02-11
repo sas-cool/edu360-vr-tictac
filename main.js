@@ -235,42 +235,6 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Function to center grid and options in front of user
-function centerInFrontOfUser() {
-    if (!renderer.xr.isPresenting) return;
-    
-    const camera = renderer.xr.getCamera();
-    
-    // Get camera's forward direction
-    const forward = new THREE.Vector3(0, 0, -1);
-    forward.applyQuaternion(camera.quaternion);
-    
-    // Calculate position 2 meters in front of camera
-    const targetPosition = new THREE.Vector3();
-    targetPosition.copy(camera.position).add(forward.multiplyScalar(2));
-    
-    // Position grid at eye level
-    gridGroup.position.set(
-        targetPosition.x,
-        camera.position.y,  // Keep at eye level
-        targetPosition.z
-    );
-    
-    // Position options slightly below and closer
-    optionsGroup.position.set(
-        targetPosition.x,
-        camera.position.y - 0.4,  // Below eye level
-        targetPosition.z + 0.5    // Closer than grid
-    );
-}
-
-// Handle select/touch events from VR controller
-renderer.xr.addEventListener('select', (event) => {
-    if (!isIntersectingGrid) {  // Only center if not clicking grid
-        centerInFrontOfUser();
-    }
-});
-
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -322,6 +286,33 @@ renderer.xr.addEventListener('sessionend', () => {
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
+        
+        // If in VR, update grid and options to stay fixed in world space
+        if (renderer.xr.isPresenting) {
+            const xrCamera = renderer.xr.getCamera();
+            
+            // Get camera's world position
+            const cameraPosition = new THREE.Vector3();
+            cameraPosition.setFromMatrixPosition(xrCamera.matrixWorld);
+            
+            // Keep grid and options in fixed world positions
+            gridGroup.position.set(0, 1.6, -1.5);
+            optionsGroup.position.set(0, 0.8, -0.8);
+            
+            // Create world matrices for fixed positions
+            const gridMatrix = new THREE.Matrix4();
+            const optionsMatrix = new THREE.Matrix4();
+            
+            gridMatrix.makeTranslation(gridGroup.position.x, gridGroup.position.y, gridGroup.position.z);
+            optionsMatrix.makeTranslation(optionsGroup.position.x, optionsGroup.position.y, optionsGroup.position.z);
+            
+            // Apply world matrices
+            gridGroup.matrixAutoUpdate = false;
+            optionsGroup.matrixAutoUpdate = false;
+            
+            gridGroup.matrix.copy(gridMatrix);
+            optionsGroup.matrix.copy(optionsMatrix);
+        }
         
         // Pulse the reticle
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
