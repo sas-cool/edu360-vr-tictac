@@ -24,12 +24,10 @@ const halfSize = totalSize / 2;
 
 // Create grid group
 const gridGroup = new THREE.Group();
-gridGroup.matrixAutoUpdate = false; // Disable auto updates to keep fixed in world space
 scene.add(gridGroup);
 
 // Create options group
 const optionsGroup = new THREE.Group();
-optionsGroup.matrixAutoUpdate = false; // Disable auto updates to keep fixed in world space
 scene.add(optionsGroup);
 
 // Create grid lines
@@ -240,15 +238,8 @@ document.body.appendChild(centerButton);
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    
-    // Set initial positions
     gridGroup.position.set(0, 1.6, -1.5);
     optionsGroup.position.set(0, 0.8, -0.8);
-    
-    // Update matrices once
-    gridGroup.updateMatrix();
-    optionsGroup.updateMatrix();
-    
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -287,14 +278,32 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
-    gridGroup.visible = false;
-    optionsGroup.visible = false;
+    gridGroup.position.set(0, 0, 0);
+    optionsGroup.position.set(0, 0, 0);
 });
 
 // Animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
+        
+        // If in VR, keep grid and options facing forward
+        if (renderer.xr.isPresenting) {
+            const camera = renderer.xr.getCamera();
+            
+            // Get camera's forward direction
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(camera.quaternion);
+            
+            // Keep grid and options at fixed offsets from camera
+            gridGroup.position.copy(camera.position);
+            gridGroup.position.add(new THREE.Vector3(0, 0, -1.5));
+            gridGroup.rotation.set(0, 0, 0);  // Keep facing forward
+            
+            optionsGroup.position.copy(camera.position);
+            optionsGroup.position.add(new THREE.Vector3(0, -0.8, -0.8));
+            optionsGroup.rotation.set(0, 0, 0);  // Keep facing forward
+        }
         
         // Pulse the reticle
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
