@@ -264,26 +264,18 @@ function centerInFrontOfUser() {
     );
 }
 
-// Add touch button for centering
-const touchButton = document.createElement('button');
-touchButton.textContent = 'Touch to Center';
-touchButton.style.position = 'absolute';
-touchButton.style.bottom = '20px';
-touchButton.style.left = '50%';
-touchButton.style.transform = 'translateX(-50%)';
-touchButton.style.padding = '12px 24px';
-touchButton.style.backgroundColor = '#4CAF50';
-touchButton.style.color = 'white';
-touchButton.style.border = 'none';
-touchButton.style.borderRadius = '4px';
-touchButton.style.cursor = 'pointer';
-touchButton.addEventListener('click', centerInFrontOfUser);
-document.body.appendChild(touchButton);
+// Handle select/touch events from VR controller
+renderer.xr.addEventListener('select', (event) => {
+    if (!isIntersectingGrid) {  // Only center if not clicking grid
+        centerInFrontOfUser();
+    }
+});
 
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    centerInFrontOfUser();  // Center initially
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.8, -0.8);
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
