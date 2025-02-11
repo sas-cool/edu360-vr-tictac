@@ -32,7 +32,6 @@ scene.add(optionsGroup);
 
 // Game state to track grid contents
 let gameState = Array(9).fill('');  // Empty strings for empty cells
-let selectedCell = null;  // Track which cell is selected
 
 // Function to create a grid box with optional text
 function createGridBox(row, col, text = '') {
@@ -79,9 +78,9 @@ function createGridBox(row, col, text = '') {
 
 // Function to redraw entire grid
 function redrawGrid() {
-    // Remove existing grid boxes
+    // Remove existing grid boxes (but keep grid lines and other objects)
     gridGroup.children = gridGroup.children.filter(child => 
-        child instanceof THREE.LineSegments  // Keep grid lines
+        !(child.userData && child.userData.type === 'cell')
     );
 
     // Redraw all grid boxes with their current state
@@ -127,7 +126,28 @@ const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
 // Create initial empty grid
-redrawGrid();  // Draw initial empty grid
+redrawGrid();
+
+// Create collision planes for grid cells
+const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const invisibleMaterial = new THREE.MeshBasicMaterial({
+    visible: false,
+    side: THREE.DoubleSide
+});
+
+// Add collision planes for each cell
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
+        
+        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
+        plane.position.set(x, y, z);
+        plane.userData = { type: 'cell', row, col };
+        gridGroup.add(plane);
+    }
+}
 
 // Enhanced lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -553,36 +573,26 @@ function updateOptionPanels() {
     });
 }
 
-// Modify the touch button click handler
-touchButton.addEventListener('click', () => {
-    if (selectedCell !== null && selectedOption !== null) {
-        const row = Math.floor(selectedCell / 3);
-        const col = selectedCell % 3;
+// Modify the existing onTouchButtonPress function
+function onTouchButtonPress() {
+    if (selectedCell && selectedOption) {
+        const row = selectedCell.userData.row;
+        const col = selectedCell.userData.col;
         const index = row * 3 + col;
         
-        // Update game state
+        // Update game state with selected option text
         gameState[index] = selectedOption.userData.text;
         
         // Redraw entire grid with updated state
         redrawGrid();
-        
-        // Reset selection state
+
+        // Reset selection states (using existing logic)
         selectedCell = null;
         selectedOption = null;
-        
-        // Remove highlights
         highlightCell(null);
         highlightOption(null);
     }
-});
-
-// Update cell selection handler
-function onCellSelect(intersection) {
-    const cell = intersection.object;
-    if (cell.userData.type === 'cell') {
-        const row = cell.userData.row;
-        const col = cell.userData.col;
-        selectedCell = row * 3 + col;
-        highlightCell(cell);
-    }
 }
+
+// Replace the existing touch button event listener
+touchButton.addEventListener('click', onTouchButtonPress);
