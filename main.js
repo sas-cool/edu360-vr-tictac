@@ -22,19 +22,40 @@ const gridSize = 3;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
-// Create grid group at a fixed world position
+// Create grid group
 const gridGroup = new THREE.Group();
+gridGroup.position.set(0, 1.6, -1.5);
 scene.add(gridGroup);
-gridGroup.position.set(0, 1.6, -1.5); // Keep original position
-gridGroup.matrixAutoUpdate = false;    // Prevent auto-updates
-gridGroup.updateMatrix();              // Update once
 
-// Create options group at a fixed world position
+// Create options group
 const optionsGroup = new THREE.Group();
+optionsGroup.position.set(0, 0.8, -0.8);
 scene.add(optionsGroup);
-optionsGroup.position.set(0, 0.8, -0.8); // Keep original position
-optionsGroup.matrixAutoUpdate = false;    // Prevent auto-updates
-optionsGroup.updateMatrix();              // Update once
+
+// Create a parent group for both grid and options
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+worldGroup.add(gridGroup);
+worldGroup.add(optionsGroup);
+
+// Function to ensure groups stay in world space
+function updateWorldPosition() {
+    // Store the world matrix of groups
+    const gridWorldMatrix = gridGroup.matrixWorld.clone();
+    const optionsWorldMatrix = optionsGroup.matrixWorld.clone();
+    
+    // Remove from world group temporarily
+    worldGroup.remove(gridGroup);
+    worldGroup.remove(optionsGroup);
+    
+    // Add directly to scene to maintain world position
+    scene.add(gridGroup);
+    scene.add(optionsGroup);
+    
+    // Apply stored world matrices
+    gridGroup.applyMatrix4(gridWorldMatrix);
+    optionsGroup.applyMatrix4(optionsWorldMatrix);
+}
 
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
@@ -244,6 +265,7 @@ document.body.appendChild(centerButton);
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
+    updateWorldPosition();  // Fix positions in world space
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -282,26 +304,8 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
-    gridGroup.visible = false;
-    optionsGroup.visible = false;
-});
-
-// Handle touch button click - reset to original fixed position
-document.getElementById('touch-button').addEventListener('click', () => {
-    if (renderer.xr.isPresenting) {
-        gridGroup.matrixAutoUpdate = true;     // Enable updates temporarily
-        optionsGroup.matrixAutoUpdate = true;
-        
-        // Reset to original positions
-        gridGroup.position.set(0, 1.6, -1.5);
-        optionsGroup.position.set(0, 0.8, -0.8);
-        
-        // Update once and disable auto-updates
-        gridGroup.updateMatrix();
-        optionsGroup.updateMatrix();
-        gridGroup.matrixAutoUpdate = false;
-        optionsGroup.matrixAutoUpdate = false;
-    }
+    gridGroup.position.set(0, 0, 0);
+    optionsGroup.position.set(0, 0, 0);
 });
 
 // Animation loop
