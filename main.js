@@ -31,69 +31,75 @@ const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
 
 // Create grid lines
-const vertices = [];
-const gridSize = 3;
-const cellSize = 0.4;
-const gap = 0.0;
-const halfSize = (gridSize * cellSize) / 2;
-
-// Create vertical lines
-for (let i = 0; i <= gridSize; i++) {
-    const x = (i * cellSize) - halfSize;
-    vertices.push(x, -halfSize, 0);
-    vertices.push(x, halfSize, 0);
-}
-
-// Create horizontal lines
-for (let i = 0; i <= gridSize; i++) {
-    const y = (i * cellSize) - halfSize;
-    vertices.push(-halfSize, y, 0);
-    vertices.push(halfSize, y, 0);
-}
+const gridMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x00ff00,
+    linewidth: 2
+});
 
 const gridGeometry = new THREE.BufferGeometry();
-gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-const gridMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+const points = [];
+
+// Add vertical lines
+for (let i = 0; i <= gridSize; i++) {
+    const x = (i * cellSize) - halfSize;
+    points.push(
+        x, -halfSize, -2,
+        x, halfSize, -2
+    );
+}
+
+// Add horizontal lines
+for (let i = 0; i <= gridSize; i++) {
+    const y = (i * cellSize) - halfSize;
+    points.push(
+        -halfSize, y, -2,
+        halfSize, y, -2
+    );
+}
+
+gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
 
-// Add markers at grid vertices
-const markerGeometry = new THREE.SphereGeometry(0.02);
-const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-// Add markers at grid line intersections
-for (let i = 0; i < vertices.length; i += 3) {
-    const marker = new THREE.Mesh(markerGeometry, redMaterial);
-    marker.position.set(vertices[i], vertices[i + 1], 0);
-    gridGroup.add(marker);
-}
-
-// Add blue markers at collision plane positions for comparison
-const blueMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-
-// Create collision planes for grid cells
+// Create grid boxes with text
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
-const invisibleMaterial = new THREE.MeshBasicMaterial({
-    visible: false,
-    side: THREE.DoubleSide
-});
 
-// Add collision planes for each cell
+// Add collision planes with text for each cell
 for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
+        // Calculate position
         const x = (col * cellSize) - halfSize + cellSize/2;
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -2;
-        
-        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
+
+        // Create canvas for text texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw text (using option text instead of "Testing")
+        context.fillStyle = '#00FF00';
+        context.font = 'bold 25px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(`Option ${row * 3 + col + 1}`, canvas.width/2, canvas.height/2);
+
+        // Create texture and material
+        const texture = new THREE.CanvasTexture(canvas);
+        const cellMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.7, // Semi-transparent
+            side: THREE.DoubleSide
+        });
+
+        // Create grid box with text
+        const plane = new THREE.Mesh(cellPlaneGeometry, cellMaterial);
         plane.position.set(x, y, z);
         plane.userData = { type: 'cell', row, col };
         gridGroup.add(plane);
-
-        // Add blue marker at collision plane position
-        const blueMarker = new THREE.Mesh(markerGeometry, blueMaterial);
-        blueMarker.position.set(x, y, 0);
-        gridGroup.add(blueMarker);
     }
 }
 
