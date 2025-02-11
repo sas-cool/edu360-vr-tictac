@@ -30,6 +30,22 @@ scene.add(gridGroup);
 const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
 
+// Create a fixed world container that won't move with camera
+const worldContainer = new THREE.Group();
+scene.add(worldContainer);
+
+// Add grid and options to world container
+worldContainer.add(gridGroup);
+worldContainer.add(optionsGroup);
+
+// Set their positions relative to world container
+gridGroup.position.set(0, 1.6, -1.5);
+optionsGroup.position.set(0, 0.8, -0.8);
+
+// Prevent world container from updating with camera
+worldContainer.matrixAutoUpdate = false;
+worldContainer.updateMatrix();
+
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
     color: 0x00ff00,
@@ -286,33 +302,6 @@ renderer.xr.addEventListener('sessionend', () => {
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
-        
-        // If in VR, update grid and options to stay fixed in world space
-        if (renderer.xr.isPresenting) {
-            const xrCamera = renderer.xr.getCamera();
-            
-            // Get camera's world position
-            const cameraPosition = new THREE.Vector3();
-            cameraPosition.setFromMatrixPosition(xrCamera.matrixWorld);
-            
-            // Keep grid and options in fixed world positions
-            gridGroup.position.set(0, 1.6, -1.5);
-            optionsGroup.position.set(0, 0.8, -0.8);
-            
-            // Create world matrices for fixed positions
-            const gridMatrix = new THREE.Matrix4();
-            const optionsMatrix = new THREE.Matrix4();
-            
-            gridMatrix.makeTranslation(gridGroup.position.x, gridGroup.position.y, gridGroup.position.z);
-            optionsMatrix.makeTranslation(optionsGroup.position.x, optionsGroup.position.y, optionsGroup.position.z);
-            
-            // Apply world matrices
-            gridGroup.matrixAutoUpdate = false;
-            optionsGroup.matrixAutoUpdate = false;
-            
-            gridGroup.matrix.copy(gridMatrix);
-            optionsGroup.matrix.copy(optionsMatrix);
-        }
         
         // Pulse the reticle
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
