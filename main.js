@@ -23,140 +23,64 @@ const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
 // Create grid group
-let gridGroup = new THREE.Group();
+const gridGroup = new THREE.Group();
 scene.add(gridGroup);
 
 // Create options group
-let optionsGroup = new THREE.Group();
+const optionsGroup = new THREE.Group();
 scene.add(optionsGroup);
 
-// Track game state
-let gridState = Array(9).fill('');  // Empty strings for empty cells
-let currentOptions = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6", "Option 7", "Option 8", "Option 9"];
+// Create grid lines
+const gridMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x00ff00,
+    linewidth: 2
+});
 
-// Function to create a textured material with text
-function createTextMaterial(text, fontSize = 25) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#00FF00';
-    context.font = `bold ${fontSize}px Arial`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width/2, canvas.height/2);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    return new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide
-    });
+const gridGeometry = new THREE.BufferGeometry();
+const points = [];
+
+// Add vertical lines
+for (let i = 0; i <= gridSize; i++) {
+    const x = (i * cellSize) - halfSize;
+    points.push(
+        x, -halfSize, -2,
+        x, halfSize, -2
+    );
 }
 
-// Function to redraw entire scene
-function redrawScene() {
-    // Clear existing grid boxes and options
-    scene.remove(gridGroup);
-    scene.remove(optionsGroup);
-    
-    // Recreate groups
-    gridGroup = new THREE.Group();
-    optionsGroup = new THREE.Group();
-    
-    // Redraw grid lines
-    const gridMaterial = new THREE.LineBasicMaterial({ 
-        color: 0x00ff00,
-        linewidth: 2
-    });
-
-    const gridGeometry = new THREE.BufferGeometry();
-    const points = [];
-
-    // Add vertical lines
-    for (let i = 0; i <= gridSize; i++) {
-        const x = (i * cellSize) - halfSize;
-        points.push(x, -halfSize, -2, x, halfSize, -2);
-    }
-
-    // Add horizontal lines
-    for (let i = 0; i <= gridSize; i++) {
-        const y = (i * cellSize) - halfSize;
-        points.push(-halfSize, y, -2, halfSize, y, -2);
-    }
-
-    gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-    const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
-    gridGroup.add(gridLines);
-
-    // Redraw grid boxes with current state
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            const index = row * 3 + col;
-            const x = (col * cellSize) - halfSize + cellSize/2;
-            const y = -(row * cellSize) + halfSize - cellSize/2;
-            const z = -2;
-
-            // Create grid box with text if it exists
-            const material = gridState[index] ? 
-                createTextMaterial(gridState[index]) : 
-                new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
-
-            const plane = new THREE.Mesh(
-                new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9),
-                material
-            );
-            plane.position.set(x, y, z);
-            plane.userData = { type: 'cell', row, col };
-            gridGroup.add(plane);
-        }
-    }
-
-    // Redraw options panel
-    const optionSize = 0.3;
-    const optionGap = 0.1;
-    const panelWidth = 3 * (optionSize + optionGap);
-    const panelHeight = 3 * (optionSize + optionGap);
-
-    // Create options background
-    const panelGeometry = new THREE.PlaneGeometry(panelWidth + 0.2, panelHeight + 0.2);
-    const panelMaterial = new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.5,
-        side: THREE.DoubleSide
-    });
-    const optionsPanel = new THREE.Mesh(panelGeometry, panelMaterial);
-    optionsPanel.position.set(2, 0, -2);
-    optionsGroup.add(optionsPanel);
-
-    // Add option boxes with text
-    for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-            const index = row * 3 + col;
-            const x = 2 + (col - 1) * (optionSize + optionGap);
-            const y = (1 - row) * (optionSize + optionGap);
-            const z = -1.9;
-
-            const optionPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(optionSize, optionSize),
-                createTextMaterial(currentOptions[index], 20)
-            );
-            optionPlane.position.set(x, y, z);
-            optionPlane.userData = { type: 'option', text: currentOptions[index] };
-            optionsGroup.add(optionPlane);
-        }
-    }
-
-    // Add groups back to scene
-    scene.add(gridGroup);
-    scene.add(optionsGroup);
+// Add horizontal lines
+for (let i = 0; i <= gridSize; i++) {
+    const y = (i * cellSize) - halfSize;
+    points.push(
+        -halfSize, y, -2,
+        halfSize, y, -2
+    );
 }
 
-// Initial scene draw
-redrawScene();
+gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
+gridGroup.add(gridLines);
+
+// Create collision planes for grid cells
+const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
+const invisibleMaterial = new THREE.MeshBasicMaterial({
+    visible: false,
+    side: THREE.DoubleSide
+});
+
+// Add collision planes for each cell
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
+        
+        const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
+        plane.position.set(x, y, z);
+        plane.userData = { type: 'cell', row, col };
+        gridGroup.add(plane);
+    }
+}
 
 // Enhanced lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -311,6 +235,68 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
+// Track game state and objects
+let gridState = Array(9).fill('');
+let currentOptions = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6", "Option 7", "Option 8", "Option 9"];
+let needsUpdate = false;
+
+// Function to properly dispose of materials and textures
+function disposeMaterial(material) {
+    if (!material) return;
+    if (material.map) {
+        material.map.dispose();
+    }
+    material.dispose();
+}
+
+// Function to create text material
+function createTextMaterial(text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#00FF00';
+    context.font = 'bold 25px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(text, canvas.width/2, canvas.height/2);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+}
+
+// Function to update a specific grid cell
+function updateGridCell(row, col, text) {
+    const index = row * 3 + col;
+    gridState[index] = text;
+    
+    // Find the cell in the grid
+    const cell = gridGroup.children.find(child => 
+        child.userData && 
+        child.userData.type === 'cell' && 
+        child.userData.row === row && 
+        child.userData.col === col
+    );
+    
+    if (cell) {
+        // Clean up old material if it exists
+        if (cell.material && cell.material.map) {
+            cell.material.map.dispose();
+        }
+        if (cell.material) {
+            cell.material.dispose();
+        }
+        
+        // Create new material with text
+        cell.material = createTextMaterial(text);
+    }
+}
+
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -358,9 +344,20 @@ renderer.xr.addEventListener('sessionend', () => {
     optionsGroup.position.set(0, 0, 0);
 });
 
-// Animation loop
+// Modified animation loop
 function animate() {
     renderer.setAnimationLoop(() => {
+        if (needsUpdate) {
+            // Update grid cells based on state
+            gridGroup.children.forEach(child => {
+                if (child.userData && child.userData.type === 'cell') {
+                    const index = child.userData.row * 3 + child.userData.col;
+                    updateGridCell(child.userData.row, child.userData.col, gridState[index]);
+                }
+            });
+            needsUpdate = false;
+        }
+
         const time = Date.now() * 0.001;
         
         // Pulse the reticle
@@ -581,59 +578,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Modify touch button handler
-let selectedCell = null;
-let selectedOption = null;
-
-function highlightCell(cell) {
-    if (selectedCell) {
-        selectedCell.material.color.setHex(0xffffff);
-    }
-    if (cell) {
-        cell.material.color.setHex(0xff0000);
-    }
-    selectedCell = cell;
-}
-
-function highlightOption(option) {
-    if (selectedOption) {
-        selectedOption.material.color.setHex(0xffffff);
-    }
-    if (option) {
-        option.material.color.setHex(0xff0000);
-    }
-    selectedOption = option;
-}
-
-// Handle VR controller select event
-renderer.xr.addEventListener('select', () => {
-    if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'cell') {
-        highlightCell(currentIntersect);
-    }
-
-    if (currentIntersect && currentIntersect.userData && currentIntersect.userData.type === 'option') {
-        highlightOption(currentIntersect);
-    }
-});
-
-// Handle touch button click
-document.getElementById('touch-button').addEventListener('click', () => {
-    if (selectedCell && selectedOption) {
-        const row = selectedCell.userData.row;
-        const col = selectedCell.userData.col;
-        const index = row * 3 + col;
-        
-        // Update state
-        gridState[index] = selectedOption.userData.text;
-        
-        // Redraw entire scene
-        redrawScene();
-        
-        // Reset selection states
-        selectedCell = null;
-        selectedOption = null;
-        highlightCell(null);
-        highlightOption(null);
-    }
-});
