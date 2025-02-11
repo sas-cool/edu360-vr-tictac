@@ -235,11 +235,55 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
+// Function to center grid and options in front of user
+function centerInFrontOfUser() {
+    if (!renderer.xr.isPresenting) return;
+    
+    const camera = renderer.xr.getCamera();
+    
+    // Get camera's forward direction
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyQuaternion(camera.quaternion);
+    
+    // Calculate position 2 meters in front of camera
+    const targetPosition = new THREE.Vector3();
+    targetPosition.copy(camera.position).add(forward.multiplyScalar(2));
+    
+    // Position grid at eye level
+    gridGroup.position.set(
+        targetPosition.x,
+        camera.position.y,  // Keep at eye level
+        targetPosition.z
+    );
+    
+    // Position options slightly below and closer
+    optionsGroup.position.set(
+        targetPosition.x,
+        camera.position.y - 0.4,  // Below eye level
+        targetPosition.z + 0.5    // Closer than grid
+    );
+}
+
+// Add touch button for centering
+const touchButton = document.createElement('button');
+touchButton.textContent = 'Touch to Center';
+touchButton.style.position = 'absolute';
+touchButton.style.bottom = '20px';
+touchButton.style.left = '50%';
+touchButton.style.transform = 'translateX(-50%)';
+touchButton.style.padding = '12px 24px';
+touchButton.style.backgroundColor = '#4CAF50';
+touchButton.style.color = 'white';
+touchButton.style.border = 'none';
+touchButton.style.borderRadius = '4px';
+touchButton.style.cursor = 'pointer';
+touchButton.addEventListener('click', centerInFrontOfUser);
+document.body.appendChild(touchButton);
+
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.8, -0.8);
+    centerInFrontOfUser();  // Center initially
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -286,24 +330,6 @@ renderer.xr.addEventListener('sessionend', () => {
 function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
-        
-        // If in VR, keep grid and options facing forward
-        if (renderer.xr.isPresenting) {
-            const camera = renderer.xr.getCamera();
-            
-            // Get camera's forward direction
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(camera.quaternion);
-            
-            // Keep grid and options at fixed offsets from camera
-            gridGroup.position.copy(camera.position);
-            gridGroup.position.add(new THREE.Vector3(0, 0, -1.5));
-            gridGroup.rotation.set(0, 0, 0);  // Keep facing forward
-            
-            optionsGroup.position.copy(camera.position);
-            optionsGroup.position.add(new THREE.Vector3(0, -0.8, -0.8));
-            optionsGroup.rotation.set(0, 0, 0);  // Keep facing forward
-        }
         
         // Pulse the reticle
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
