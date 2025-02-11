@@ -24,38 +24,13 @@ const halfSize = totalSize / 2;
 
 // Create grid group
 const gridGroup = new THREE.Group();
-gridGroup.position.set(0, 1.6, -1.5);
+gridGroup.matrixAutoUpdate = false; // Disable auto updates to keep fixed in world space
 scene.add(gridGroup);
 
 // Create options group
 const optionsGroup = new THREE.Group();
-optionsGroup.position.set(0, 0.8, -0.8);
+optionsGroup.matrixAutoUpdate = false; // Disable auto updates to keep fixed in world space
 scene.add(optionsGroup);
-
-// Create a parent group for both grid and options
-const worldGroup = new THREE.Group();
-scene.add(worldGroup);
-worldGroup.add(gridGroup);
-worldGroup.add(optionsGroup);
-
-// Function to ensure groups stay in world space
-function updateWorldPosition() {
-    // Store the world matrix of groups
-    const gridWorldMatrix = gridGroup.matrixWorld.clone();
-    const optionsWorldMatrix = optionsGroup.matrixWorld.clone();
-    
-    // Remove from world group temporarily
-    worldGroup.remove(gridGroup);
-    worldGroup.remove(optionsGroup);
-    
-    // Add directly to scene to maintain world position
-    scene.add(gridGroup);
-    scene.add(optionsGroup);
-    
-    // Apply stored world matrices
-    gridGroup.applyMatrix4(gridWorldMatrix);
-    optionsGroup.applyMatrix4(optionsWorldMatrix);
-}
 
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
@@ -265,7 +240,15 @@ document.body.appendChild(centerButton);
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
-    updateWorldPosition();  // Fix positions in world space
+    
+    // Set initial positions
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.8, -0.8);
+    
+    // Update matrices once
+    gridGroup.updateMatrix();
+    optionsGroup.updateMatrix();
+    
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
@@ -304,8 +287,8 @@ renderer.xr.addEventListener('sessionstart', () => {
 
 renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
-    gridGroup.position.set(0, 0, 0);
-    optionsGroup.position.set(0, 0, 0);
+    gridGroup.visible = false;
+    optionsGroup.visible = false;
 });
 
 // Animation loop
