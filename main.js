@@ -16,9 +16,9 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.set(0, 1.6, 2.5);
 
 // Grid constants
-const cellSize = 0.6;
-const gap = 0.05;
 const gridSize = 3;
+const cellSize = 0.72; // Increased by 20% from 0.6
+const gap = 0.05;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
@@ -130,7 +130,7 @@ function createTextSprite(text, color = '#00ff00', width = 256, height = 256, is
         
         // Set font size and style based on whether it's a grid cell or option
         if (isGridCell) {
-            context.font = 'Bold 40px Arial'; // Smaller font for grid cells
+            context.font = 'Bold 48px Arial'; // Increased by 20% from 40px
         } else {
             context.font = 'Bold 80px Arial'; // Larger font for options
         }
@@ -140,11 +140,11 @@ function createTextSprite(text, color = '#00ff00', width = 256, height = 256, is
         context.fillStyle = color;
         
         // Calculate max width based on canvas size and whether it's a grid cell
-        const maxWidth = isGridCell ? width * 0.8 : width * 0.9;
+        const maxWidth = isGridCell ? width * 0.85 : width * 0.9; // Slightly increased for grid cells
         
         // Wrap text and calculate total height
         const lines = wrapText(text, maxWidth);
-        const lineHeight = isGridCell ? 45 : 85;
+        const lineHeight = isGridCell ? 54 : 85; // Increased by 20% from 45
         const totalHeight = lines.length * lineHeight;
         const startY = (height - totalHeight) / 2 + lineHeight / 2;
         
@@ -183,8 +183,8 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -1.99; // Slightly in front of grid
         
-        const textSprite = createTextSprite('', '#00ff00', 256, 256, true); // true for grid cell
-        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.8, cellSize * 0.8);
+        const textSprite = createTextSprite('', '#00ff00', 512, 512, true); // Increased canvas size for better quality
+        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9); // Increased from 0.8
         const textMaterial = new THREE.MeshBasicMaterial({
             map: textSprite.texture,
             transparent: true,
