@@ -37,8 +37,8 @@ worldContainer.add(gridGroup);
 worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
-gridGroup.position.set(0, 2.8, -2.0); // Move grid up much more and back slightly
-optionsGroup.position.set(0, 0.8, -0.8); // Keep options position the same
+gridGroup.position.set(0, 3.2, -1.5); // Move grid up much higher
+optionsGroup.position.set(0, 0.4, -0.8); // Move options down slightly
 
 // Prevent world container from updating with camera
 worldContainer.matrixAutoUpdate = false;
