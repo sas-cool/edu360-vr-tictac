@@ -684,57 +684,77 @@ function updateOptionPanels() {
     });
 }
 
-// Test automatic text placement
-function testAutoPlace() {
-    // Generate random row and col
-    const row = Math.floor(Math.random() * gridSize);
-    const col = Math.floor(Math.random() * gridSize);
+// Machine's turn
+function machineTurn() {
+    // 1. Get visible options (same way we get them for user)
+    const visibleOptions = [];
+    optionsGroup.children.forEach(panel => {
+        if (panel.visible) {
+            visibleOptions.push(panel);
+        }
+    });
     
-    // Place test text
-    updateGridCellText(row, col, "TEST");
+    // If no options left, game over
+    if (visibleOptions.length === 0) return;
     
-    // Schedule next placement
-    setTimeout(testAutoPlace, 1000);
+    // 2. Get empty cells (same way we did in test)
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const gridText = gridTexts[row][col];
+            if (!gridText.sprite.visible) {
+                emptyCells.push({row, col});
+            }
+        }
+    }
+    
+    // If no empty cells, game over
+    if (emptyCells.length === 0) return;
+    
+    // 3. Select random moves
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    // 4. Place text (using same method that worked in test)
+    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
+    
+    // 5. Hide used option (same as user turn)
+    randomOption.visible = false;
 }
 
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null; // Keep track of the selected panel
+let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
             selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect; // Store the panel reference
+            selectedPanel = currentIntersect;
         } else if (currentIntersect.userData.type === 'cell') {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
-                updateGridCellText(row, col, selectedOption);
                 
-                // Make the selected option panel invisible
-                if (selectedPanel) {
-                    selectedPanel.visible = false;
+                // Only place if cell is empty
+                if (!gridTexts[row][col].sprite.visible) {
+                    // Place user's option
+                    updateGridCellText(row, col, selectedOption);
+                    
+                    // Hide used option
+                    if (selectedPanel) {
+                        selectedPanel.visible = false;
+                    }
+                    
+                    // Clear selections
+                    selectedOption = null;
+                    selectedPanel = null;
+                    
+                    // Trigger machine's turn after delay
+                    setTimeout(machineTurn, 1000);
                 }
-                
-                // Clear selections
-                selectedOption = null;
-                selectedPanel = null;
             }
         }
     }
-});
-
-// Initialize VR
-renderer.xr.addEventListener('sessionstart', () => {
-    console.log('VR Session starting...');
-    gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.4, -0.8);
-    loadOptions();
-    gridGroup.visible = true;
-    optionsGroup.visible = true;
-    
-    // Start test auto-placement
-    setTimeout(testAutoPlace, 1000);
 });
