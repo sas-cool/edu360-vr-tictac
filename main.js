@@ -170,9 +170,9 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -1.99;
         
-        // Create grid cell background
+        // Create grid cell background with black color
         const cellGeometry = new THREE.PlaneGeometry(cellSize * 0.95, cellSize * 0.95);
-        const cellMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+        const cellMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // Changed to black
         const cell = new THREE.Mesh(cellGeometry, cellMaterial);
         cell.position.set(x, y, -2);
         cell.userData = { type: 'cell', row, col };
