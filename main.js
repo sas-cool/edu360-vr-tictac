@@ -684,24 +684,27 @@ function updateOptionPanels() {
     });
 }
 
-// Game state management
-let isUserTurn = true;
-let gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-
-// Find random visible option panel
+// Find random visible option
 function getRandomVisibleOption() {
-    const visiblePanels = optionsGroup.children.filter(panel => panel.visible);
-    if (visiblePanels.length === 0) return null;
-    return visiblePanels[Math.floor(Math.random() * visiblePanels.length)];
+    const visibleOptions = [];
+    optionsGroup.children.forEach(panel => {
+        if (panel.visible) {
+            visibleOptions.push(panel);
+        }
+    });
+    if (visibleOptions.length === 0) return null;
+    return visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
 }
 
-// Find empty grid cells
-function getEmptyCell() {
+// Find random empty grid cell
+function getRandomEmptyCell() {
     const emptyCells = [];
     gridGroup.children.forEach(cell => {
         if (cell.userData.type === 'cell') {
             const { row, col } = cell.userData;
-            if (!gameBoard[row][col]) {
+            // Check if cell is empty by looking at its text content
+            const gridText = gridTexts[row][col];
+            if (gridText && !gridText.sprite.canvas.getContext('2d').getImageData(0, 0, 1, 1).data[3]) {
                 emptyCells.push(cell);
             }
         }
@@ -717,21 +720,15 @@ function machineTurn() {
     if (!optionPanel) return;
     
     // Get random empty cell
-    const targetCell = getEmptyCell();
+    const targetCell = getRandomEmptyCell();
     if (!targetCell) return;
     
-    // Update game board
+    // Place option in cell
     const { row, col } = targetCell.userData;
-    gameBoard[row][col] = optionPanel.userData.text;
-    
-    // Update grid text
     updateGridCellText(row, col, optionPanel.userData.text);
     
-    // Hide the selected option
+    // Hide the used option
     optionPanel.visible = false;
-    
-    // Switch back to user's turn
-    isUserTurn = true;
 }
 
 // Handle VR controller select event
@@ -739,8 +736,6 @@ let selectedOption = null;
 let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
-    if (!isUserTurn) return; // Only allow selection during user's turn
-    
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
@@ -750,41 +745,20 @@ controller.addEventListener('select', () => {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
+                updateGridCellText(row, col, selectedOption);
                 
-                // Only proceed if cell is empty
-                if (!gameBoard[row][col]) {
-                    // Update game board
-                    gameBoard[row][col] = selectedOption;
-                    updateGridCellText(row, col, selectedOption);
-                    
-                    // Make the selected option panel invisible
-                    if (selectedPanel) {
-                        selectedPanel.visible = false;
-                    }
-                    
-                    // Clear selections
-                    selectedOption = null;
-                    selectedPanel = null;
-                    
-                    // Switch turns and trigger machine's turn
-                    isUserTurn = false;
-                    setTimeout(machineTurn, 1000); // Machine plays after 1 second
+                // Make the selected option panel invisible
+                if (selectedPanel) {
+                    selectedPanel.visible = false;
                 }
+                
+                // Clear selections
+                selectedOption = null;
+                selectedPanel = null;
+                
+                // Machine takes its turn after a delay
+                setTimeout(machineTurn, 1000);
             }
         }
     }
-});
-
-// Initialize game on VR session start
-renderer.xr.addEventListener('sessionstart', () => {
-    console.log('VR Session starting...');
-    gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.4, -0.8);
-    loadOptions();
-    gridGroup.visible = true;
-    optionsGroup.visible = true;
-    
-    // Reset game state
-    gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-    isUserTurn = true;
 });
