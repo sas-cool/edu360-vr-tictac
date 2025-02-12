@@ -460,60 +460,80 @@ renderer.xr.addEventListener('sessionend', () => {
     optionsGroup.position.set(0, 0, 0);
 });
 
-// Animation loop
-function animate() {
-    renderer.setAnimationLoop(() => {
-        const time = Date.now() * 0.001;
-        
-        // Pulse the reticle
-        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
-        
-        // Update raycaster
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        
-        // Check intersections with grid cells and options
-        const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
-        const optionPanels = optionsGroup.children[0]?.children.filter(child => child instanceof THREE.Mesh && child.material.map) || [];
-        
-        const intersectsGrid = raycaster.intersectObjects(gridCells);
-        const intersectsOptions = raycaster.intersectObjects(optionPanels);
-        
-        // Handle highlighting
-        if (intersectsGrid.length > 0) {
-            const intersect = intersectsGrid[0];
-            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
-                currentIntersect = intersect.object;
-                currentHighlight = 'grid';
-                
-                gridHighlightFrame.position.copy(intersect.object.position);
-                gridHighlightFrame.visible = true;
-                if (optionHighlightFrame) optionHighlightFrame.visible = false;
-            }
-        } else if (intersectsOptions.length > 0) {
-            const intersect = intersectsOptions[0];
-            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
-                currentIntersect = intersect.object;
-                currentHighlight = 'option';
-                
-                if (optionHighlightFrame) {
-                    optionHighlightFrame.position.copy(intersect.object.position);
-                    optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
-                    optionHighlightFrame.visible = true;
-                }
-                gridHighlightFrame.visible = false;
-            }
-        } else {
-            if (currentIntersect) {
-                currentIntersect = null;
-                currentHighlight = null;
-                gridHighlightFrame.visible = false;
-                if (optionHighlightFrame) optionHighlightFrame.visible = false;
+// Game state
+let isUserTurn = true;
+let lastTurnTime = 0;
+
+// Machine's turn
+function machineTurn() {
+    // Get visible options
+    const visibleOptions = Array.from(optionsGroup.children).filter(panel => panel.visible);
+    if (visibleOptions.length === 0) return;
+
+    // Get empty cells
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (!gridTexts[row][col].sprite.visible) {
+                emptyCells.push({row, col});
             }
         }
-        
-        updateOptionPanels();
-        renderer.render(scene, camera);
-    });
+    }
+    if (emptyCells.length === 0) return;
+
+    // Make random move
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    // Place option
+    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
+    randomOption.visible = false;
+    
+    // Switch back to user's turn
+    isUserTurn = true;
+}
+
+// Handle VR controller select event
+let selectedOption = null;
+let selectedPanel = null; // Keep track of the selected panel
+const controller = renderer.xr.getController(0);
+controller.addEventListener('select', () => {
+    if (!isUserTurn) return; // Ignore clicks during machine's turn
+    
+    if (currentIntersect) {
+        if (currentIntersect.userData.type === 'option') {
+            selectedOption = currentIntersect.userData.text;
+            selectedPanel = currentIntersect;
+        } else if (currentIntersect.userData.type === 'cell') {
+            if (selectedOption) {
+                const { row, col } = currentIntersect.userData;
+                
+                // Only place if cell is empty
+                if (!gridTexts[row][col].sprite.visible) {
+                    updateGridCellText(row, col, selectedOption);
+                    if (selectedPanel) selectedPanel.visible = false;
+                    
+                    selectedOption = null;
+                    selectedPanel = null;
+                    
+                    // Switch to machine's turn
+                    isUserTurn = false;
+                    lastTurnTime = Date.now();
+                }
+            }
+        }
+    }
+});
+
+// Animation loop
+function animate() {
+    // Handle machine's turn after 1 second delay
+    if (!isUserTurn && Date.now() - lastTurnTime > 1000) {
+        machineTurn();
+    }
+    
+    renderer.setAnimationLoop(animate);
+    renderer.render(scene, camera);
 }
 
 animate();
@@ -683,78 +703,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Machine's turn
-function machineTurn() {
-    // 1. Get visible options (same way we get them for user)
-    const visibleOptions = [];
-    optionsGroup.children.forEach(panel => {
-        if (panel.visible) {
-            visibleOptions.push(panel);
-        }
-    });
-    
-    // If no options left, game over
-    if (visibleOptions.length === 0) return;
-    
-    // 2. Get empty cells (same way we did in test)
-    const emptyCells = [];
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            const gridText = gridTexts[row][col];
-            if (!gridText.sprite.visible) {
-                emptyCells.push({row, col});
-            }
-        }
-    }
-    
-    // If no empty cells, game over
-    if (emptyCells.length === 0) return;
-    
-    // 3. Select random moves
-    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    
-    // 4. Place text (using same method that worked in test)
-    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
-    
-    // 5. Hide used option (same as user turn)
-    randomOption.visible = false;
-}
-
-// Handle VR controller select event
-let selectedOption = null;
-let selectedPanel = null;
-const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => {
-    if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
-            // Store selected option and its panel
-            selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect;
-        } else if (currentIntersect.userData.type === 'cell') {
-            // If we have a selected option, update the cell
-            if (selectedOption) {
-                const { row, col } = currentIntersect.userData;
-                
-                // Only place if cell is empty
-                if (!gridTexts[row][col].sprite.visible) {
-                    // Place user's option
-                    updateGridCellText(row, col, selectedOption);
-                    
-                    // Hide used option
-                    if (selectedPanel) {
-                        selectedPanel.visible = false;
-                    }
-                    
-                    // Clear selections
-                    selectedOption = null;
-                    selectedPanel = null;
-                    
-                    // Trigger machine's turn after delay
-                    setTimeout(machineTurn, 1000);
-                }
-            }
-        }
-    }
-});
