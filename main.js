@@ -684,64 +684,57 @@ function updateOptionPanels() {
     });
 }
 
-// Machine's turn
-function machineTurn() {
-    // 1. Get all visible options
-    const visibleOptions = Array.from(optionsGroup.children).filter(panel => panel.visible);
-    if (visibleOptions.length === 0) return;
-
-    // 2. Get all empty cells in the grid
-    const emptyCells = [];
-    gridGroup.children.forEach(cell => {
-        if (cell.userData && cell.userData.type === 'cell') {
-            const { row, col } = cell.userData;
-            const gridText = gridTexts[row][col];
-            if (!gridText.sprite.visible) {
-                emptyCells.push(cell);
-            }
-        }
-    });
-    if (emptyCells.length === 0) return;
-
-    // 3. Make random moves
-    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    const { row, col } = randomCell.userData;
-
-    // 4. Place the option
-    updateGridCellText(row, col, randomOption.userData.text);
-    randomOption.visible = false;
+// Test automatic text placement
+function testAutoPlace() {
+    // Generate random row and col
+    const row = Math.floor(Math.random() * gridSize);
+    const col = Math.floor(Math.random() * gridSize);
+    
+    // Place test text
+    updateGridCellText(row, col, "TEST");
+    
+    // Schedule next placement
+    setTimeout(testAutoPlace, 1000);
 }
 
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null;
+let selectedPanel = null; // Keep track of the selected panel
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
             selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect;
+            selectedPanel = currentIntersect; // Store the panel reference
         } else if (currentIntersect.userData.type === 'cell') {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
-                
-                // Check if cell is empty
-                if (gridTexts[row][col].sprite.visible) return;
-                
-                // Place user's option
                 updateGridCellText(row, col, selectedOption);
-                if (selectedPanel) selectedPanel.visible = false;
+                
+                // Make the selected option panel invisible
+                if (selectedPanel) {
+                    selectedPanel.visible = false;
+                }
                 
                 // Clear selections
                 selectedOption = null;
                 selectedPanel = null;
-                
-                // Trigger machine's turn after delay
-                setTimeout(machineTurn, 1000);
             }
         }
     }
+});
+
+// Initialize VR
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.4, -0.8);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    
+    // Start test auto-placement
+    setTimeout(testAutoPlace, 1000);
 });
