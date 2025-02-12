@@ -37,8 +37,8 @@ worldContainer.add(gridGroup);
 worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
-gridGroup.position.set(0, 3.2, -1.5); // Move grid up much higher
-optionsGroup.position.set(0, 0.4, -0.8); // Move options down slightly
+gridGroup.position.set(0, 2.0, -1.5); // Keep grid position
+optionsGroup.position.set(0, 0.0, -0.8); // Move options down significantly
 
 // Prevent world container from updating with camera
 worldContainer.matrixAutoUpdate = false;
@@ -208,7 +208,7 @@ function updateGridCellText(row, col, text) {
 const optionTexts = [];
 
 function createOptionPanel(text, index) {
-    const y = 0.3 - (index * 0.15);
+    const y = -0.2 - (index * 0.15); // Start options lower and maintain spacing
     
     // Create panel
     const panelGeometry = new THREE.PlaneGeometry(0.4, 0.1);
@@ -220,8 +220,8 @@ function createOptionPanel(text, index) {
     panel.position.set(0, y, 0);
     panel.userData = { type: 'option', text };
     
-    // Create text with larger size for options
-    const textSprite = createTextSprite(text, '#00ff00', 512, 256, false); // false for options
+    // Create text
+    const textSprite = createTextSprite(text, '#00ff00', 512, 512, false);
     const textGeometry = new THREE.PlaneGeometry(0.35, 0.08);
     const textMaterial = new THREE.MeshBasicMaterial({
         map: textSprite.texture,
@@ -229,7 +229,7 @@ function createOptionPanel(text, index) {
         side: THREE.DoubleSide
     });
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.z = 0.001; // Slightly in front of panel
+    textMesh.position.z = 0.001;
     panel.add(textMesh);
     
     optionTexts.push(textSprite);
@@ -417,7 +417,7 @@ document.body.appendChild(centerButton);
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
     gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.8, -0.8);
+    optionsGroup.position.set(0, 0.0, -0.8);
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
