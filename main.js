@@ -555,52 +555,93 @@ function showDebugMessage(message) {
 
 // Machine's turn
 function machineTurn() {
-    showDebugMessage("Machine turn: Finding move...");
+    showDebugMessage("Machine's turn...");
     
-    // Find visible options first
-    const visibleOptions = optionsGroup.children.filter(panel => {
-        return panel.visible && panel.userData && panel.userData.text;
+    // Get visible options
+    const visibleOptions = [];
+    optionsGroup.children.forEach(child => {
+        if (child.visible) {
+            visibleOptions.push(child);
+        }
     });
     
     if (visibleOptions.length === 0) {
-        showDebugMessage("Game Over: No options left!");
+        showDebugMessage("No options available!");
         return;
     }
     
-    // Find empty grid cells
+    // Get empty grid cells
     const emptyCells = [];
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
+    gridGroup.children.forEach(child => {
+        if (child.userData && child.userData.type === 'cell') {
+            const { row, col } = child.userData;
             const gridText = gridTexts[row][col];
-            // Check if cell is truly empty
-            if (gridText && (!gridText.sprite.visible || !gridText.sprite.material.map)) {
-                emptyCells.push({ row, col });
+            if (!gridText.sprite.visible) {
+                emptyCells.push(child);
+            }
+        }
+    });
+    
+    if (emptyCells.length === 0) {
+        showDebugMessage("No empty cells!");
+        return;
+    }
+    
+    // Select random moves
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    const { row, col } = randomCell.userData;
+    
+    // Place option in cell
+    updateGridCellText(row, col, randomOption.userData.text);
+    
+    // Hide the used option
+    randomOption.visible = false;
+    
+    showDebugMessage("Machine finished turn");
+}
+
+// Handle VR controller select event
+let selectedOption = null;
+let selectedPanel = null;
+const controller = renderer.xr.getController(0);
+controller.addEventListener('select', () => {
+    if (currentIntersect) {
+        if (currentIntersect.userData.type === 'option') {
+            // Store selected option and its panel
+            selectedOption = currentIntersect.userData.text;
+            selectedPanel = currentIntersect;
+            showDebugMessage("Option selected");
+        } else if (currentIntersect.userData.type === 'cell') {
+            // If we have a selected option, update the cell
+            if (selectedOption) {
+                const { row, col } = currentIntersect.userData;
+                
+                // Check if cell is empty
+                if (gridTexts[row][col].sprite.visible) {
+                    showDebugMessage("Cell already taken!");
+                    return;
+                }
+                
+                updateGridCellText(row, col, selectedOption);
+                
+                // Make the selected option panel invisible
+                if (selectedPanel) {
+                    selectedPanel.visible = false;
+                }
+                
+                // Clear selections
+                selectedOption = null;
+                selectedPanel = null;
+                
+                showDebugMessage("Your turn complete");
+                
+                // Machine's turn after delay
+                setTimeout(machineTurn, 1000);
             }
         }
     }
-    
-    if (emptyCells.length === 0) {
-        showDebugMessage("Game Over: Grid is full!");
-        return;
-    }
-    
-    // Pick random moves
-    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    
-    showDebugMessage(`Machine selecting: ${randomOption.userData.text}`);
-    
-    // Place the option
-    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
-    showDebugMessage(`Machine placed at row ${randomCell.row + 1}, col ${randomCell.col + 1}`);
-    
-    // Hide used option
-    randomOption.visible = false;
-    
-    setTimeout(() => {
-        showDebugMessage("Your turn now!");
-    }, 2000);
-}
+});
 
 // Function to create text texture for options
 function createOptionTexture(text) {
@@ -760,39 +801,3 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
-
-// Handle VR controller select event
-let selectedOption = null;
-let selectedPanel = null; // Keep track of the selected panel
-const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => {
-    if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
-            // Store selected option and its panel
-            selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect; // Store the panel reference
-            showDebugMessage(`Selected: ${selectedOption}`);
-        } else if (currentIntersect.userData.type === 'cell') {
-            // If we have a selected option, update the cell
-            if (selectedOption) {
-                const { row, col } = currentIntersect.userData;
-                showDebugMessage(`Placing at row ${row + 1}, col ${col + 1}`);
-                
-                updateGridCellText(row, col, selectedOption);
-                
-                // Make the selected option panel invisible
-                if (selectedPanel) {
-                    selectedPanel.visible = false;
-                }
-                
-                // Clear selections
-                selectedOption = null;
-                selectedPanel = null;
-                
-                // Trigger machine's turn after delay
-                showDebugMessage("Machine thinking...");
-                setTimeout(machineTurn, 1000);
-            }
-        }
-    }
-});
