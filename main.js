@@ -22,13 +22,17 @@ const gridSize = 3;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
+// Create grid group
+const gridGroup = new THREE.Group();
+scene.add(gridGroup);
+
+// Create options group
+const optionsGroup = new THREE.Group();
+scene.add(optionsGroup);
+
 // Create a fixed world container that won't move with camera
 const worldContainer = new THREE.Group();
 scene.add(worldContainer);
-
-// Create grid and options groups
-const gridGroup = new THREE.Group();
-const optionsGroup = new THREE.Group();
 
 // Add grid and options to world container
 worldContainer.add(gridGroup);
@@ -42,103 +46,36 @@ optionsGroup.position.set(0, 0.8, -0.8);
 worldContainer.matrixAutoUpdate = false;
 worldContainer.updateMatrix();
 
-// Create grid cells with text sprites
-const gridCells = [];
-const cellSize = 0.2;
-const padding = 0.02;
-
-function createTextSprite(text, color = '#ffffff') {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const context = canvas.getContext('2d');
-    
-    // Clear canvas
-    context.fillStyle = 'rgba(0, 0, 0, 0)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw text
-    context.font = 'Bold 100px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = color;
-    context.fillText(text, canvas.width/2, canvas.height/2);
-    
-    // Create texture
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    
-    // Create sprite material and mesh
-    const spriteMaterial = new THREE.SpriteMaterial({ 
-        map: texture,
-        transparent: true
-    });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.scale.set(cellSize * 0.8, cellSize * 0.8, 1);
-    
-    return {
-        sprite,
-        context,
-        texture,
-        updateText: (newText) => {
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.fillStyle = 'rgba(0, 0, 0, 0)';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            context.fillStyle = color;
-            context.fillText(newText, canvas.width/2, canvas.height/2);
-            texture.needsUpdate = true;
-        }
-    };
-}
-
 // Create grid lines
 const gridMaterial = new THREE.LineBasicMaterial({ 
     color: 0x00ff00,
-    transparent: true,
-    opacity: 0.5
+    linewidth: 2
 });
 
 const gridGeometry = new THREE.BufferGeometry();
-const gridPositions = [];
+const points = [];
 
-// Horizontal lines
-for (let i = 0; i <= 3; i++) {
-    const y = (i - 1) * (cellSize + padding);
-    gridPositions.push(-1.5 * (cellSize + padding), y, 0);
-    gridPositions.push(1.5 * (cellSize + padding), y, 0);
+// Add vertical lines
+for (let i = 0; i <= gridSize; i++) {
+    const x = (i * cellSize) - halfSize;
+    points.push(
+        x, -halfSize, -2,
+        x, halfSize, -2
+    );
 }
 
-// Vertical lines
-for (let i = 0; i <= 3; i++) {
-    const x = (i - 1) * (cellSize + padding);
-    gridPositions.push(x, -1.5 * (cellSize + padding), 0);
-    gridPositions.push(x, 1.5 * (cellSize + padding), 0);
+// Add horizontal lines
+for (let i = 0; i <= gridSize; i++) {
+    const y = (i * cellSize) - halfSize;
+    points.push(
+        -halfSize, y, -2,
+        halfSize, y, -2
+    );
 }
 
-gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(gridPositions, 3));
+gridGeometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
 const gridLines = new THREE.LineSegments(gridGeometry, gridMaterial);
 gridGroup.add(gridLines);
-
-// Create grid cells with text sprites
-for (let row = 0; row < 3; row++) {
-    gridCells[row] = [];
-    for (let col = 0; col < 3; col++) {
-        const x = (col - 1) * (cellSize + padding);
-        const y = -(row - 1) * (cellSize + padding);
-        
-        const textSprite = createTextSprite('', '#00ff00');
-        textSprite.sprite.position.set(x, y, 0.01); // Slightly in front of grid
-        gridGroup.add(textSprite.sprite);
-        gridCells[row][col] = textSprite;
-    }
-}
-
-// Function to update grid cell text
-function updateGridCell(row, col, text) {
-    if (gridCells[row] && gridCells[row][col]) {
-        gridCells[row][col].updateText(text);
-    }
-}
 
 // Create collision planes for grid cells
 const cellPlaneGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
@@ -148,11 +85,11 @@ const invisibleMaterial = new THREE.MeshBasicMaterial({
 });
 
 // Add collision planes for each cell
-for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-        const x = (col - 1) * (cellSize + padding);
-        const y = -(row - 1) * (cellSize + padding);
-        const z = 0;
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -2;
         
         const plane = new THREE.Mesh(cellPlaneGeometry, invisibleMaterial);
         plane.position.set(x, y, z);
@@ -248,71 +185,6 @@ scene.add(camera);
 const raycaster = new THREE.Raycaster();
 let currentIntersect = null;
 let currentHighlight = null;
-
-// Create options text
-const options = [
-    "What is 2+2?",
-    "4",
-    "3",
-    "5"
-];
-
-// Create option cards with text sprites
-options.forEach((text, index) => {
-    const cardGeometry = new THREE.PlaneGeometry(0.4, 0.15);
-    const cardMaterial = new THREE.MeshBasicMaterial({
-        color: 0x444444,
-        side: THREE.DoubleSide
-    });
-    const card = new THREE.Mesh(cardGeometry, cardMaterial);
-    
-    // Position cards vertically
-    card.position.set(0, 0.2 - (index * 0.2), 0);
-    card.userData = { type: 'option', text };
-    
-    // Add text sprite to card
-    const textSprite = createTextSprite(text, '#00ff00');
-    textSprite.sprite.position.z = 0.01; // Slightly in front of card
-    card.add(textSprite.sprite);
-    
-    optionsGroup.add(card);
-});
-
-// Handle option selection
-function handleOptionSelect(option) {
-    const selectedCell = findEmptyCell();
-    if (selectedCell) {
-        const { row, col } = selectedCell;
-        updateGridCell(row, col, option.text);
-    }
-}
-
-// Find first empty cell
-function findEmptyCell() {
-    for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-            // Check if cell is empty by getting the canvas content
-            const canvas = gridCells[row][col].context.canvas;
-            const context = gridCells[row][col].context;
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            
-            // Check if all pixels are transparent
-            let isEmpty = true;
-            for (let i = 3; i < data.length; i += 4) {
-                if (data[i] !== 0) {
-                    isEmpty = false;
-                    break;
-                }
-            }
-            
-            if (isEmpty) {
-                return { row, col };
-            }
-        }
-    }
-    return null;
-}
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -431,39 +303,53 @@ function animate() {
     renderer.setAnimationLoop(() => {
         const time = Date.now() * 0.001;
         
-        // Update raycaster
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        
-        // Check intersections
-        const intersects = raycaster.intersectObjects(scene.children, true);
-        
-        // Reset current intersect
-        if (currentIntersect) {
-            if (currentIntersect.userData.type === 'option') {
-                currentIntersect.material.color.setHex(0x444444);
-            }
-            currentIntersect = null;
-        }
-        
-        // Handle new intersect
-        if (intersects.length > 0) {
-            const object = intersects[0].object;
-            
-            if (object.userData.type === 'option') {
-                currentIntersect = object;
-                object.material.color.setHex(0x666666);
-                
-                // Check for controller trigger or touch
-                if (controller.userData.isSelecting) {
-                    handleOptionSelect(object.userData);
-                    controller.userData.isSelecting = false;
-                }
-            }
-        }
-        
         // Pulse the reticle
         reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
         
+        // Update raycaster
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        
+        // Check intersections with grid cells and options
+        const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
+        const optionPanels = optionsGroup.children[0]?.children.filter(child => child instanceof THREE.Mesh && child.material.map) || [];
+        
+        const intersectsGrid = raycaster.intersectObjects(gridCells);
+        const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        // Handle highlighting
+        if (intersectsGrid.length > 0) {
+            const intersect = intersectsGrid[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'grid';
+                
+                gridHighlightFrame.position.copy(intersect.object.position);
+                gridHighlightFrame.visible = true;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
+            }
+        } else if (intersectsOptions.length > 0) {
+            const intersect = intersectsOptions[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'option';
+                
+                if (optionHighlightFrame) {
+                    optionHighlightFrame.position.copy(intersect.object.position);
+                    optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
+                    optionHighlightFrame.visible = true;
+                }
+                gridHighlightFrame.visible = false;
+            }
+        } else {
+            if (currentIntersect) {
+                currentIntersect = null;
+                currentHighlight = null;
+                gridHighlightFrame.visible = false;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
+            }
+        }
+        
+        updateOptionPanels();
         renderer.render(scene, camera);
     });
 }
@@ -635,3 +521,133 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
+
+// Create text rendering system
+function createTextSprite(text, color = '#00ff00', width = 256, height = 256) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    
+    // Clear canvas
+    context.clearRect(0, 0, width, height);
+    
+    // Draw text
+    context.font = 'Bold 100px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = color;
+    context.fillText(text, width/2, height/2);
+    
+    // Create texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    
+    // Create material
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    
+    return {
+        material,
+        context,
+        texture,
+        updateText: (newText) => {
+            context.clearRect(0, 0, width, height);
+            context.font = 'Bold 100px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = color;
+            context.fillText(newText, width/2, height/2);
+            texture.needsUpdate = true;
+        }
+    };
+}
+
+// Create text display system for grid cells
+const gridTexts = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+
+// Add text planes to grid cells
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -1.99; // Slightly in front of grid
+        
+        const textSprite = createTextSprite('');
+        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.8, cellSize * 0.8);
+        const textMesh = new THREE.Mesh(textGeometry, textSprite.material);
+        textMesh.position.set(x, y, z);
+        gridGroup.add(textMesh);
+        
+        gridTexts[row][col] = textSprite;
+    }
+}
+
+// Function to update grid cell text
+function updateGridCellText(row, col, text) {
+    if (gridTexts[row] && gridTexts[row][col]) {
+        gridTexts[row][col].updateText(text);
+    }
+}
+
+// Modify updateOptionPanels to use canvas textures
+const optionTexts = [];
+
+function createOptionPanel(text, index) {
+    const y = 0.3 - (index * 0.15);
+    
+    // Create panel
+    const panelGeometry = new THREE.PlaneGeometry(0.4, 0.1);
+    const panelMaterial = new THREE.MeshBasicMaterial({
+        color: 0x444444,
+        side: THREE.DoubleSide
+    });
+    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+    panel.position.set(0, y, 0);
+    panel.userData = { type: 'option', text };
+    
+    // Create text
+    const textSprite = createTextSprite(text);
+    const textGeometry = new THREE.PlaneGeometry(0.35, 0.08);
+    const textMesh = new THREE.Mesh(textGeometry, textSprite.material);
+    textMesh.position.z = 0.001; // Slightly in front of panel
+    panel.add(textMesh);
+    
+    optionTexts.push(textSprite);
+    return panel;
+}
+
+// Update the option selection handler
+function handleOptionSelect(option) {
+    const cell = currentIntersect.userData;
+    if (cell && cell.type === 'cell') {
+        updateGridCellText(cell.row, cell.col, option.text);
+    }
+}
+
+// Create option panels
+function createOptionPanels() {
+    // Clear existing options
+    while (optionsGroup.children.length > 0) {
+        optionsGroup.remove(optionsGroup.children[0]);
+    }
+    optionTexts.length = 0;
+
+    const options = [
+        "What is 2+2?",
+        "4",
+        "3",
+        "5"
+    ];
+
+    options.forEach((text, index) => {
+        const panel = createOptionPanel(text, index);
+        optionsGroup.add(panel);
+    });
+}
+
+// Call this after scene setup
+createOptionPanels();
