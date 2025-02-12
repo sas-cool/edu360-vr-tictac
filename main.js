@@ -684,51 +684,52 @@ function updateOptionPanels() {
     });
 }
 
-// Find random visible option
-function getRandomVisibleOption() {
-    const visibleOptions = [];
-    optionsGroup.children.forEach(panel => {
-        if (panel.visible) {
-            visibleOptions.push(panel);
-        }
-    });
-    if (visibleOptions.length === 0) return null;
-    return visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-}
-
-// Find random empty grid cell
-function getRandomEmptyCell() {
-    const emptyCells = [];
-    gridGroup.children.forEach(cell => {
-        if (cell.userData.type === 'cell') {
-            const { row, col } = cell.userData;
-            // Check if cell is empty by looking at its text content
-            const gridText = gridTexts[row][col];
-            if (gridText && !gridText.sprite.canvas.getContext('2d').getImageData(0, 0, 1, 1).data[3]) {
-                emptyCells.push(cell);
-            }
-        }
-    });
-    if (emptyCells.length === 0) return null;
-    return emptyCells[Math.floor(Math.random() * emptyCells.length)];
-}
+// Game state
+let isUserTurn = true;
+let gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
 
 // Machine's turn
 function machineTurn() {
-    // Get random visible option
-    const optionPanel = getRandomVisibleOption();
-    if (!optionPanel) return;
+    console.log("Machine's turn starting...");
     
-    // Get random empty cell
-    const targetCell = getRandomEmptyCell();
-    if (!targetCell) return;
+    // Find visible options
+    const visibleOptions = Array.from(optionsGroup.children).filter(panel => panel.visible);
+    if (visibleOptions.length === 0) {
+        console.log("No visible options left");
+        return;
+    }
+    
+    // Find empty cells
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (!gameBoard[row][col]) {
+                emptyCells.push({ row, col });
+            }
+        }
+    }
+    if (emptyCells.length === 0) {
+        console.log("No empty cells left");
+        return;
+    }
+    
+    // Select random option and cell
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    console.log("Machine selected option:", randomOption.userData.text);
+    console.log("Machine selected cell:", randomCell);
     
     // Place option in cell
-    const { row, col } = targetCell.userData;
-    updateGridCellText(row, col, optionPanel.userData.text);
+    gameBoard[randomCell.row][randomCell.col] = randomOption.userData.text;
+    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
     
     // Hide the used option
-    optionPanel.visible = false;
+    randomOption.visible = false;
+    
+    // Switch back to user's turn
+    isUserTurn = true;
+    console.log("Machine's turn completed");
 }
 
 // Handle VR controller select event
@@ -736,15 +737,32 @@ let selectedOption = null;
 let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
+    if (!isUserTurn) {
+        console.log("Not user's turn yet");
+        return;
+    }
+    
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
             selectedOption = currentIntersect.userData.text;
             selectedPanel = currentIntersect;
+            console.log("Selected option:", selectedOption);
         } else if (currentIntersect.userData.type === 'cell') {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
+                
+                // Check if cell is empty
+                if (gameBoard[row][col]) {
+                    console.log("Cell already occupied");
+                    return;
+                }
+                
+                console.log("Placing option in cell:", row, col);
+                
+                // Update game board and UI
+                gameBoard[row][col] = selectedOption;
                 updateGridCellText(row, col, selectedOption);
                 
                 // Make the selected option panel invisible
@@ -756,9 +774,34 @@ controller.addEventListener('select', () => {
                 selectedOption = null;
                 selectedPanel = null;
                 
-                // Machine takes its turn after a delay
+                // Switch turns and trigger machine's turn
+                isUserTurn = false;
+                console.log("User's turn completed, starting machine's turn...");
                 setTimeout(machineTurn, 1000);
             }
         }
     }
+});
+
+// Initialize game state
+function initGame() {
+    console.log("Initializing game...");
+    gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+    isUserTurn = true;
+    
+    // Make all options visible
+    optionsGroup.children.forEach(panel => {
+        panel.visible = true;
+    });
+}
+
+// Initialize game on VR session start
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.4, -0.8);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    initGame();
 });
