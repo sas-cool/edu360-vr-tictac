@@ -99,21 +99,64 @@ for (let row = 0; row < gridSize; row++) {
 }
 
 // Create text rendering system
-function createTextSprite(text, color = '#00ff00', width = 256, height = 256) {
+function createTextSprite(text, color = '#00ff00', width = 256, height = 256, isGridCell = false) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
     
-    // Clear canvas
-    context.clearRect(0, 0, width, height);
+    function wrapText(text, maxWidth) {
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = context.measureText(currentLine + " " + word).width;
+            if (width < maxWidth) {
+                currentLine += " " + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+        return lines;
+    }
     
-    // Draw text
-    context.font = 'Bold 100px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = color;
-    context.fillText(text, width/2, height/2);
+    function drawText(text) {
+        // Clear canvas
+        context.clearRect(0, 0, width, height);
+        
+        // Set font size and style based on whether it's a grid cell or option
+        if (isGridCell) {
+            context.font = 'Bold 40px Arial'; // Smaller font for grid cells
+        } else {
+            context.font = 'Bold 80px Arial'; // Larger font for options
+        }
+        
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillStyle = color;
+        
+        // Calculate max width based on canvas size and whether it's a grid cell
+        const maxWidth = isGridCell ? width * 0.8 : width * 0.9;
+        
+        // Wrap text and calculate total height
+        const lines = wrapText(text, maxWidth);
+        const lineHeight = isGridCell ? 45 : 85;
+        const totalHeight = lines.length * lineHeight;
+        const startY = (height - totalHeight) / 2 + lineHeight / 2;
+        
+        // Draw each line
+        lines.forEach((line, index) => {
+            const y = startY + (index * lineHeight);
+            context.fillText(line, width/2, y);
+        });
+    }
+    
+    // Initial draw
+    drawText(text);
     
     // Create texture
     const texture = new THREE.CanvasTexture(canvas);
@@ -124,12 +167,7 @@ function createTextSprite(text, color = '#00ff00', width = 256, height = 256) {
         context,
         texture,
         updateText: (newText) => {
-            context.clearRect(0, 0, width, height);
-            context.font = 'Bold 100px Arial';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillStyle = color;
-            context.fillText(newText, width/2, height/2);
+            drawText(newText);
             texture.needsUpdate = true;
         }
     };
@@ -145,7 +183,7 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -1.99; // Slightly in front of grid
         
-        const textSprite = createTextSprite('');
+        const textSprite = createTextSprite('', '#00ff00', 256, 256, true); // true for grid cell
         const textGeometry = new THREE.PlaneGeometry(cellSize * 0.8, cellSize * 0.8);
         const textMaterial = new THREE.MeshBasicMaterial({
             map: textSprite.texture,
@@ -186,8 +224,8 @@ function createOptionPanel(text, index) {
     panel.position.set(0, y, 0);
     panel.userData = { type: 'option', text };
     
-    // Create text
-    const textSprite = createTextSprite(text);
+    // Create text with larger size for options
+    const textSprite = createTextSprite(text, '#00ff00', 512, 256, false); // false for options
     const textGeometry = new THREE.PlaneGeometry(0.35, 0.08);
     const textMaterial = new THREE.MeshBasicMaterial({
         map: textSprite.texture,
