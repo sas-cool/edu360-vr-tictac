@@ -684,31 +684,107 @@ function updateOptionPanels() {
     });
 }
 
+// Game state management
+let isUserTurn = true;
+let gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+
+// Find random visible option panel
+function getRandomVisibleOption() {
+    const visiblePanels = optionsGroup.children.filter(panel => panel.visible);
+    if (visiblePanels.length === 0) return null;
+    return visiblePanels[Math.floor(Math.random() * visiblePanels.length)];
+}
+
+// Find empty grid cells
+function getEmptyCell() {
+    const emptyCells = [];
+    gridGroup.children.forEach(cell => {
+        if (cell.userData.type === 'cell') {
+            const { row, col } = cell.userData;
+            if (!gameBoard[row][col]) {
+                emptyCells.push(cell);
+            }
+        }
+    });
+    if (emptyCells.length === 0) return null;
+    return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+}
+
+// Machine's turn
+function machineTurn() {
+    // Get random visible option
+    const optionPanel = getRandomVisibleOption();
+    if (!optionPanel) return;
+    
+    // Get random empty cell
+    const targetCell = getEmptyCell();
+    if (!targetCell) return;
+    
+    // Update game board
+    const { row, col } = targetCell.userData;
+    gameBoard[row][col] = optionPanel.userData.text;
+    
+    // Update grid text
+    updateGridCellText(row, col, optionPanel.userData.text);
+    
+    // Hide the selected option
+    optionPanel.visible = false;
+    
+    // Switch back to user's turn
+    isUserTurn = true;
+}
+
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null; // Keep track of the selected panel
+let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
+    if (!isUserTurn) return; // Only allow selection during user's turn
+    
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
             selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect; // Store the panel reference
+            selectedPanel = currentIntersect;
         } else if (currentIntersect.userData.type === 'cell') {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
-                updateGridCellText(row, col, selectedOption);
                 
-                // Make the selected option panel invisible
-                if (selectedPanel) {
-                    selectedPanel.visible = false;
+                // Only proceed if cell is empty
+                if (!gameBoard[row][col]) {
+                    // Update game board
+                    gameBoard[row][col] = selectedOption;
+                    updateGridCellText(row, col, selectedOption);
+                    
+                    // Make the selected option panel invisible
+                    if (selectedPanel) {
+                        selectedPanel.visible = false;
+                    }
+                    
+                    // Clear selections
+                    selectedOption = null;
+                    selectedPanel = null;
+                    
+                    // Switch turns and trigger machine's turn
+                    isUserTurn = false;
+                    setTimeout(machineTurn, 1000); // Machine plays after 1 second
                 }
-                
-                // Clear selections
-                selectedOption = null;
-                selectedPanel = null;
             }
         }
     }
+});
+
+// Initialize game on VR session start
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.4, -0.8);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    
+    // Reset game state
+    gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+    isUserTurn = true;
 });
