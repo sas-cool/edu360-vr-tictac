@@ -7,40 +7,38 @@ import { setupScreen } from './setup.js';
 // Add setup screen to document
 document.body.appendChild(setupScreen);
 
-// Scene setup
+// Scene setup with better background
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x001100); // Very dark green background
+
+// Camera adjustment for VR with better depth precision
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 2.5);
 
-// Grid constants
+// Constants for grid
 const gridSize = 3;
-const cellSize = 1.0; // Much larger cells
+const cellSize = 1.2; // Much larger cells to match option panel size
 const gap = 0.05;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
-// Create grid container that will be positioned higher up
+// Create grid group
 const gridGroup = new THREE.Group();
-gridGroup.position.y = 1.2; // Move grid up to use more vertical space
 scene.add(gridGroup);
 
-// Options group stays at the same height relative to bottom of grid
+// Create options group
 const optionsGroup = new THREE.Group();
-optionsGroup.position.z = -2;
-optionsGroup.position.y = gridGroup.position.y - halfSize - 0.4; // Position relative to grid bottom
 scene.add(optionsGroup);
 
 // Create a fixed world container that won't move with camera
 const worldContainer = new THREE.Group();
 scene.add(worldContainer);
-
-// Add grid and options to world container
 worldContainer.add(gridGroup);
 worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
-gridGroup.position.set(0, 1.2, -1.5);
-optionsGroup.position.set(0, 0.8, -0.8);
+gridGroup.position.set(0, 2.0, -1.5); // Move grid up significantly
+optionsGroup.position.set(0, 0.8, -0.8); // Keep options position the same
 
 // Prevent world container from updating with camera
 worldContainer.matrixAutoUpdate = false;
@@ -127,7 +125,7 @@ function createTextSprite(text, color = '#00ff00', width = 512, height = 512, is
     function drawText(text) {
         context.clearRect(0, 0, width, height);
         
-        // Same size font for both grid and options now that we have space
+        // Same large font size for both grid and options
         context.font = 'Bold 80px Arial';
         
         context.textAlign = 'center';
@@ -162,10 +160,6 @@ function createTextSprite(text, color = '#00ff00', width = 512, height = 512, is
     };
 }
 
-// Create grid cells with larger size
-const gridGeometry = new THREE.PlaneGeometry(cellSize * 0.95, cellSize * 0.95);
-const gridMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
-
 // Create text display system for grid cells
 const gridTexts = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
 
@@ -176,6 +170,15 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -1.99;
         
+        // Create grid cell background
+        const cellGeometry = new THREE.PlaneGeometry(cellSize * 0.95, cellSize * 0.95);
+        const cellMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+        const cell = new THREE.Mesh(cellGeometry, cellMaterial);
+        cell.position.set(x, y, -2);
+        cell.userData = { type: 'cell', row, col };
+        gridGroup.add(cell);
+        
+        // Create text with same size as options
         const textSprite = createTextSprite('', '#00ff00', 512, 512, true);
         const textGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
         const textMaterial = new THREE.MeshBasicMaterial({
