@@ -413,6 +413,140 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
+// Game state management
+let isUserTurn = true;
+let selectedOption = null;
+let gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+let availableOptions = new Set(); // Track available options
+
+// Track which options are still visible
+function hideOption(optionText) {
+    const optionPanels = optionsGroup.children;
+    for (let i = 0; i < optionPanels.length; i++) {
+        const panel = optionPanels[i];
+        if (panel.userData.text === optionText) {
+            panel.visible = false;
+            availableOptions.delete(optionText);
+            break;
+        }
+    }
+}
+
+// Get random available option
+function getRandomOption() {
+    const options = Array.from(availableOptions);
+    if (options.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * options.length);
+    return options[randomIndex];
+}
+
+// Find empty grid cells
+function getEmptyGridCells() {
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (!gameBoard[row][col]) {
+                emptyCells.push({ row, col });
+            }
+        }
+    }
+    return emptyCells;
+}
+
+// Machine's turn
+function machineTurn() {
+    if (availableOptions.size === 0) return;
+    
+    // Get random option and empty cell
+    const optionText = getRandomOption();
+    const emptyCells = getEmptyGridCells();
+    if (!optionText || emptyCells.length === 0) return;
+    
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    // Update game board
+    gameBoard[randomCell.row][randomCell.col] = optionText;
+    
+    // Update grid text
+    const gridText = gridTexts[randomCell.row][randomCell.col];
+    gridText.sprite.updateText(optionText);
+    
+    // Hide selected option
+    hideOption(optionText);
+    
+    // Switch back to user's turn
+    isUserTurn = true;
+}
+
+// Handle option selection
+function handleOptionSelect(option) {
+    if (!isUserTurn) return;
+    selectedOption = option.userData.text;
+}
+
+// Handle grid cell selection
+function handleGridSelect(cell) {
+    if (!isUserTurn || !selectedOption) return;
+    
+    const { row, col } = cell.userData;
+    
+    // Check if cell is empty
+    if (gameBoard[row][col]) return;
+    
+    // Update game board
+    gameBoard[row][col] = selectedOption;
+    
+    // Update grid text
+    const gridText = gridTexts[row][col];
+    gridText.sprite.updateText(selectedOption);
+    
+    // Hide selected option
+    hideOption(selectedOption);
+    
+    // Reset selection and switch turns
+    selectedOption = null;
+    isUserTurn = false;
+    
+    // Start machine's turn after a short delay
+    setTimeout(machineTurn, 1000);
+}
+
+// Initialize game
+function initGame() {
+    gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+    isUserTurn = true;
+    selectedOption = null;
+    availableOptions.clear();
+    
+    // Make all options visible and add to available options
+    optionsGroup.children.forEach(panel => {
+        panel.visible = true;
+        availableOptions.add(panel.userData.text);
+    });
+}
+
+// Update click handlers
+function onClick(event) {
+    if (!controller) return;
+    
+    const raycaster = new THREE.Raycaster();
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(controller.matrixWorld);
+    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    
+    const intersects = raycaster.intersectObjects([...optionsGroup.children, ...gridGroup.children], true);
+    
+    if (intersects.length > 0) {
+        const selected = intersects[0].object;
+        if (selected.userData.type === 'option') {
+            handleOptionSelect(selected);
+        } else if (selected.userData.type === 'cell') {
+            handleGridSelect(selected);
+        }
+    }
+}
+
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -452,6 +586,7 @@ renderer.xr.addEventListener('sessionstart', () => {
             }
         }
     });
+    initGame();
 });
 
 renderer.xr.addEventListener('sessionend', () => {
@@ -685,20 +820,8 @@ function updateOptionPanels() {
 }
 
 // Handle VR controller select event
-let selectedOption = null;
-const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => {
-    if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
-            // Store selected option
-            selectedOption = currentIntersect.userData.text;
-        } else if (currentIntersect.userData.type === 'cell') {
-            // If we have a selected option, update the cell
-            if (selectedOption) {
-                const { row, col } = currentIntersect.userData;
-                updateGridCellText(row, col, selectedOption);
-                selectedOption = null; // Clear selection after use
-            }
-        }
-    }
-});
+let controller = renderer.xr.getController(0);
+controller.addEventListener('select', onClick);
+
+// Initialize game
+initGame();
