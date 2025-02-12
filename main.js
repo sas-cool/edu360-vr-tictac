@@ -98,6 +98,134 @@ for (let row = 0; row < gridSize; row++) {
     }
 }
 
+// Create text rendering system
+function createTextSprite(text, color = '#00ff00', width = 256, height = 256) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    
+    // Clear canvas
+    context.clearRect(0, 0, width, height);
+    
+    // Draw text
+    context.font = 'Bold 100px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = color;
+    context.fillText(text, width/2, height/2);
+    
+    // Create texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    
+    return {
+        canvas,
+        context,
+        texture,
+        updateText: (newText) => {
+            context.clearRect(0, 0, width, height);
+            context.font = 'Bold 100px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = color;
+            context.fillText(newText, width/2, height/2);
+            texture.needsUpdate = true;
+        }
+    };
+}
+
+// Create text display system for grid cells
+const gridTexts = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
+
+// Add text planes to grid cells
+for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+        const x = (col * cellSize) - halfSize + cellSize/2;
+        const y = -(row * cellSize) + halfSize - cellSize/2;
+        const z = -1.99; // Slightly in front of grid
+        
+        const textSprite = createTextSprite('');
+        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.8, cellSize * 0.8);
+        const textMaterial = new THREE.MeshBasicMaterial({
+            map: textSprite.texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(x, y, z);
+        gridGroup.add(textMesh);
+        
+        gridTexts[row][col] = {
+            sprite: textSprite,
+            mesh: textMesh
+        };
+    }
+}
+
+// Function to update grid cell text
+function updateGridCellText(row, col, text) {
+    if (gridTexts[row] && gridTexts[row][col]) {
+        gridTexts[row][col].sprite.updateText(text);
+    }
+}
+
+// Create option panels with text
+const optionTexts = [];
+
+function createOptionPanel(text, index) {
+    const y = 0.3 - (index * 0.15);
+    
+    // Create panel
+    const panelGeometry = new THREE.PlaneGeometry(0.4, 0.1);
+    const panelMaterial = new THREE.MeshBasicMaterial({
+        color: 0x444444,
+        side: THREE.DoubleSide
+    });
+    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+    panel.position.set(0, y, 0);
+    panel.userData = { type: 'option', text };
+    
+    // Create text
+    const textSprite = createTextSprite(text);
+    const textGeometry = new THREE.PlaneGeometry(0.35, 0.08);
+    const textMaterial = new THREE.MeshBasicMaterial({
+        map: textSprite.texture,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.z = 0.001; // Slightly in front of panel
+    panel.add(textMesh);
+    
+    optionTexts.push(textSprite);
+    return panel;
+}
+
+// Create option panels
+function createOptionPanels() {
+    // Clear existing options
+    while (optionsGroup.children.length > 0) {
+        optionsGroup.remove(optionsGroup.children[0]);
+    }
+    optionTexts.length = 0;
+
+    const options = [
+        "What is 2+2?",
+        "4",
+        "3",
+        "5"
+    ];
+
+    options.forEach((text, index) => {
+        const panel = createOptionPanel(text, index);
+        optionsGroup.add(panel);
+    });
+}
+
+// Create option panels after scene setup
+createOptionPanels();
+
 // Enhanced lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
@@ -522,132 +650,21 @@ function updateOptionPanels() {
     });
 }
 
-// Create text rendering system
-function createTextSprite(text, color = '#00ff00', width = 256, height = 256) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    
-    // Clear canvas
-    context.clearRect(0, 0, width, height);
-    
-    // Draw text
-    context.font = 'Bold 100px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = color;
-    context.fillText(text, width/2, height/2);
-    
-    // Create texture
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    
-    // Create material
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        side: THREE.DoubleSide
-    });
-    
-    return {
-        material,
-        context,
-        texture,
-        updateText: (newText) => {
-            context.clearRect(0, 0, width, height);
-            context.font = 'Bold 100px Arial';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillStyle = color;
-            context.fillText(newText, width/2, height/2);
-            texture.needsUpdate = true;
+// Handle VR controller select event
+let selectedOption = null;
+const controller = renderer.xr.getController(0);
+controller.addEventListener('select', () => {
+    if (currentIntersect) {
+        if (currentIntersect.userData.type === 'option') {
+            // Store selected option
+            selectedOption = currentIntersect.userData.text;
+        } else if (currentIntersect.userData.type === 'cell') {
+            // If we have a selected option, update the cell
+            if (selectedOption) {
+                const { row, col } = currentIntersect.userData;
+                updateGridCellText(row, col, selectedOption);
+                selectedOption = null; // Clear selection after use
+            }
         }
-    };
-}
-
-// Create text display system for grid cells
-const gridTexts = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-
-// Add text planes to grid cells
-for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-        const x = (col * cellSize) - halfSize + cellSize/2;
-        const y = -(row * cellSize) + halfSize - cellSize/2;
-        const z = -1.99; // Slightly in front of grid
-        
-        const textSprite = createTextSprite('');
-        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.8, cellSize * 0.8);
-        const textMesh = new THREE.Mesh(textGeometry, textSprite.material);
-        textMesh.position.set(x, y, z);
-        gridGroup.add(textMesh);
-        
-        gridTexts[row][col] = textSprite;
     }
-}
-
-// Function to update grid cell text
-function updateGridCellText(row, col, text) {
-    if (gridTexts[row] && gridTexts[row][col]) {
-        gridTexts[row][col].updateText(text);
-    }
-}
-
-// Modify updateOptionPanels to use canvas textures
-const optionTexts = [];
-
-function createOptionPanel(text, index) {
-    const y = 0.3 - (index * 0.15);
-    
-    // Create panel
-    const panelGeometry = new THREE.PlaneGeometry(0.4, 0.1);
-    const panelMaterial = new THREE.MeshBasicMaterial({
-        color: 0x444444,
-        side: THREE.DoubleSide
-    });
-    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
-    panel.position.set(0, y, 0);
-    panel.userData = { type: 'option', text };
-    
-    // Create text
-    const textSprite = createTextSprite(text);
-    const textGeometry = new THREE.PlaneGeometry(0.35, 0.08);
-    const textMesh = new THREE.Mesh(textGeometry, textSprite.material);
-    textMesh.position.z = 0.001; // Slightly in front of panel
-    panel.add(textMesh);
-    
-    optionTexts.push(textSprite);
-    return panel;
-}
-
-// Update the option selection handler
-function handleOptionSelect(option) {
-    const cell = currentIntersect.userData;
-    if (cell && cell.type === 'cell') {
-        updateGridCellText(cell.row, cell.col, option.text);
-    }
-}
-
-// Create option panels
-function createOptionPanels() {
-    // Clear existing options
-    while (optionsGroup.children.length > 0) {
-        optionsGroup.remove(optionsGroup.children[0]);
-    }
-    optionTexts.length = 0;
-
-    const options = [
-        "What is 2+2?",
-        "4",
-        "3",
-        "5"
-    ];
-
-    options.forEach((text, index) => {
-        const panel = createOptionPanel(text, index);
-        optionsGroup.add(panel);
-    });
-}
-
-// Call this after scene setup
-createOptionPanels();
+});
