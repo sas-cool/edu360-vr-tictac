@@ -7,27 +7,27 @@ import { setupScreen } from './setup.js';
 // Add setup screen to document
 document.body.appendChild(setupScreen);
 
-// Scene setup with better background
+// Scene setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x001100); // Very dark green background
-
-// Camera adjustment for VR with better depth precision
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 2.5);
 
 // Grid constants
-const cellSize = 0.6;
-const gap = 0.05;
 const gridSize = 3;
+const cellSize = 1.0; // Much larger cells
+const gap = 0.05;
 const totalSize = (cellSize * 3) + (gap * 2);
 const halfSize = totalSize / 2;
 
-// Create grid group
+// Create grid container that will be positioned higher up
 const gridGroup = new THREE.Group();
+gridGroup.position.y = 1.2; // Move grid up to use more vertical space
 scene.add(gridGroup);
 
-// Create options group
+// Options group stays at the same height relative to bottom of grid
 const optionsGroup = new THREE.Group();
+optionsGroup.position.z = -2;
+optionsGroup.position.y = gridGroup.position.y - halfSize - 0.4; // Position relative to grid bottom
 scene.add(optionsGroup);
 
 // Create a fixed world container that won't move with camera
@@ -39,7 +39,7 @@ worldContainer.add(gridGroup);
 worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
-gridGroup.position.set(0, 1.6, -1.5);
+gridGroup.position.set(0, 1.2, -1.5);
 optionsGroup.position.set(0, 0.8, -0.8);
 
 // Prevent world container from updating with camera
@@ -99,10 +99,10 @@ for (let row = 0; row < gridSize; row++) {
 }
 
 // Create text rendering system
-function createTextSprite(text, color = '#00ff00', width = 256, height = 256, isGridCell = false) {
+function createTextSprite(text, color = '#00ff00', width = 512, height = 512, isGridCell = false) {
     const canvas = document.createElement('canvas');
-    canvas.width = isGridCell ? 512 : width; // Larger canvas for grid cells
-    canvas.height = isGridCell ? 512 : height;
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext('2d');
     
     function wrapText(text, maxWidth) {
@@ -125,27 +125,24 @@ function createTextSprite(text, color = '#00ff00', width = 256, height = 256, is
     }
     
     function drawText(text) {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, width, height);
         
-        if (isGridCell) {
-            context.font = 'Bold 65px Arial'; // Much larger font for grid cells
-        } else {
-            context.font = 'Bold 80px Arial'; // Keep options the same
-        }
+        // Same size font for both grid and options now that we have space
+        context.font = 'Bold 80px Arial';
         
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillStyle = color;
         
-        const maxWidth = canvas.width * 0.9;
+        const maxWidth = width * 0.9;
         const lines = wrapText(text, maxWidth);
-        const lineHeight = isGridCell ? 70 : 85;
+        const lineHeight = 85;
         const totalHeight = lines.length * lineHeight;
-        const startY = (canvas.height - totalHeight) / 2 + lineHeight / 2;
+        const startY = (height - totalHeight) / 2 + lineHeight / 2;
         
         lines.forEach((line, index) => {
             const y = startY + (index * lineHeight);
-            context.fillText(line, canvas.width/2, y);
+            context.fillText(line, width/2, y);
         });
     }
     
@@ -165,6 +162,10 @@ function createTextSprite(text, color = '#00ff00', width = 256, height = 256, is
     };
 }
 
+// Create grid cells with larger size
+const gridGeometry = new THREE.PlaneGeometry(cellSize * 0.95, cellSize * 0.95);
+const gridMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+
 // Create text display system for grid cells
 const gridTexts = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
 
@@ -175,8 +176,8 @@ for (let row = 0; row < gridSize; row++) {
         const y = -(row * cellSize) + halfSize - cellSize/2;
         const z = -1.99;
         
-        const textSprite = createTextSprite('', '#00ff00', 256, 256, true);
-        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.85, cellSize * 0.85);
+        const textSprite = createTextSprite('', '#00ff00', 512, 512, true);
+        const textGeometry = new THREE.PlaneGeometry(cellSize * 0.9, cellSize * 0.9);
         const textMaterial = new THREE.MeshBasicMaterial({
             map: textSprite.texture,
             transparent: true,
