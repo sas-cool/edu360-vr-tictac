@@ -37,7 +37,7 @@ worldContainer.add(gridGroup);
 worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
-gridGroup.position.set(0, 2.4, -1.5); // Move grid up more to avoid overlap
+gridGroup.position.set(0, 2.8, -2.0); // Move grid up much more and back slightly
 optionsGroup.position.set(0, 0.8, -0.8); // Keep options position the same
 
 // Prevent world container from updating with camera
