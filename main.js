@@ -38,7 +38,7 @@ worldContainer.add(optionsGroup);
 
 // Set their positions relative to world container
 gridGroup.position.set(0, 2.0, -1.5); // Keep grid position
-optionsGroup.position.set(0, 0.0, -0.8); // Move options down significantly
+optionsGroup.position.set(0, 0.4, -0.8); // Move options to halfway between previous positions
 
 // Prevent world container from updating with camera
 worldContainer.matrixAutoUpdate = false;
@@ -208,7 +208,7 @@ function updateGridCellText(row, col, text) {
 const optionTexts = [];
 
 function createOptionPanel(text, index) {
-    const y = -0.2 - (index * 0.15); // Start options lower and maintain spacing
+    const y = 0.05 - (index * 0.15); // Start options a bit higher but maintain spacing
     
     // Create panel
     const panelGeometry = new THREE.PlaneGeometry(0.4, 0.1);
@@ -417,7 +417,7 @@ document.body.appendChild(centerButton);
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
     gridGroup.position.set(0, 1.6, -1.5);
-    optionsGroup.position.set(0, 0.0, -0.8);
+    optionsGroup.position.set(0, 0.4, -0.8); // Update VR session position too
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
