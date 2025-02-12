@@ -525,6 +525,83 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Debug text in VR
+let debugText = null;
+function showDebugMessage(message) {
+    if (!debugText) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+        context.fillStyle = 'white';
+        context.font = '24px Arial';
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const geometry = new THREE.PlaneGeometry(1, 0.25);
+        debugText = new THREE.Mesh(geometry, material);
+        debugText.position.set(0, 2.2, -1.5); // Above the grid
+        scene.add(debugText);
+    }
+    
+    const context = debugText.material.map.image.getContext('2d');
+    context.clearRect(0, 0, 512, 128);
+    context.fillStyle = 'white';
+    context.font = '24px Arial';
+    context.textAlign = 'center';
+    context.fillText(message, 256, 64);
+    debugText.material.map.needsUpdate = true;
+}
+
+// Machine's turn
+function machineTurn() {
+    showDebugMessage("Machine turn: Finding move...");
+    
+    // Find visible options first
+    const visibleOptions = optionsGroup.children.filter(panel => {
+        return panel.visible && panel.userData && panel.userData.text;
+    });
+    
+    if (visibleOptions.length === 0) {
+        showDebugMessage("Game Over: No options left!");
+        return;
+    }
+    
+    // Find empty grid cells
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const gridText = gridTexts[row][col];
+            // Check if cell is truly empty
+            if (gridText && (!gridText.sprite.visible || !gridText.sprite.material.map)) {
+                emptyCells.push({ row, col });
+            }
+        }
+    }
+    
+    if (emptyCells.length === 0) {
+        showDebugMessage("Game Over: Grid is full!");
+        return;
+    }
+    
+    // Pick random moves
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    showDebugMessage(`Machine selecting: ${randomOption.userData.text}`);
+    
+    // Place the option
+    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
+    showDebugMessage(`Machine placed at row ${randomCell.row + 1}, col ${randomCell.col + 1}`);
+    
+    // Hide used option
+    randomOption.visible = false;
+    
+    setTimeout(() => {
+        showDebugMessage("Your turn now!");
+    }, 2000);
+}
+
 // Function to create text texture for options
 function createOptionTexture(text) {
     const canvas = document.createElement('canvas');
@@ -684,98 +761,22 @@ function updateOptionPanels() {
     });
 }
 
-// Debug text in VR
-let debugText = null;
-function showDebugMessage(message) {
-    if (!debugText) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 128;
-        const context = canvas.getContext('2d');
-        context.fillStyle = 'white';
-        context.font = '24px Arial';
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-        const geometry = new THREE.PlaneGeometry(1, 0.25);
-        debugText = new THREE.Mesh(geometry, material);
-        debugText.position.set(0, 2.2, -1.5); // Above the grid
-        scene.add(debugText);
-    }
-    
-    const context = debugText.material.map.image.getContext('2d');
-    context.clearRect(0, 0, 512, 128);
-    context.fillStyle = 'white';
-    context.font = '24px Arial';
-    context.textAlign = 'center';
-    context.fillText(message, 256, 64);
-    debugText.material.map.needsUpdate = true;
-}
-
-// Machine's turn
-function machineTurn() {
-    showDebugMessage("Machine's turn starting...");
-    
-    // Get all visible options
-    const visibleOptions = [];
-    optionsGroup.children.forEach(panel => {
-        if (panel.visible) {
-            visibleOptions.push(panel);
-        }
-    });
-    
-    if (visibleOptions.length === 0) {
-        showDebugMessage("Game Over - No more options!");
-        return;
-    }
-    
-    // Get all empty grid cells
-    const emptyCells = [];
-    gridGroup.children.forEach(cell => {
-        if (cell.userData.type === 'cell') {
-            const { row, col } = cell.userData;
-            const gridText = gridTexts[row][col];
-            if (!gridText || !gridText.sprite.visible) {
-                emptyCells.push(cell);
-            }
-        }
-    });
-    
-    if (emptyCells.length === 0) {
-        showDebugMessage("Game Over - Grid is full!");
-        return;
-    }
-    
-    // Select random option and cell
-    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    const { row, col } = randomCell.userData;
-    
-    showDebugMessage(`Machine placing ${randomOption.userData.text} at (${row},${col})`);
-    
-    // Place the option
-    updateGridCellText(row, col, randomOption.userData.text);
-    randomOption.visible = false;
-    
-    showDebugMessage("Your turn!");
-}
-
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null;
+let selectedPanel = null; // Keep track of the selected panel
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             // Store selected option and its panel
             selectedOption = currentIntersect.userData.text;
-            selectedPanel = currentIntersect;
-            showDebugMessage(`Selected option: ${selectedOption}`);
+            selectedPanel = currentIntersect; // Store the panel reference
+            showDebugMessage(`Selected: ${selectedOption}`);
         } else if (currentIntersect.userData.type === 'cell') {
             // If we have a selected option, update the cell
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
-                showDebugMessage(`Placing ${selectedOption} at (${row},${col})`);
+                showDebugMessage(`Placing at row ${row + 1}, col ${col + 1}`);
                 
                 updateGridCellText(row, col, selectedOption);
                 
@@ -789,7 +790,7 @@ controller.addEventListener('select', () => {
                 selectedPanel = null;
                 
                 // Trigger machine's turn after delay
-                showDebugMessage("Starting machine's turn...");
+                showDebugMessage("Machine thinking...");
                 setTimeout(machineTurn, 1000);
             }
         }
