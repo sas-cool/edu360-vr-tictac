@@ -413,61 +413,6 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
-// Game state management
-let isUserTurn = true;
-let gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-let availableOptions = new Set(); // Track available options
-
-// Initialize available options
-function initGame() {
-    gameBoard = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
-    isUserTurn = true;
-    availableOptions.clear();
-    optionsGroup.children.forEach(panel => {
-        panel.visible = true;
-        availableOptions.add(panel.userData.text);
-    });
-}
-
-// Machine's turn logic
-function machineTurn() {
-    if (availableOptions.size === 0) return;
-    
-    // Get random available option
-    const options = Array.from(availableOptions);
-    const randomOption = options[Math.floor(Math.random() * options.length)];
-    
-    // Find empty cells
-    const emptyCells = [];
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            if (!gameBoard[row][col]) {
-                emptyCells.push({ row, col });
-            }
-        }
-    }
-    
-    if (emptyCells.length === 0) return;
-    
-    // Choose random empty cell
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    
-    // Update game board and UI
-    gameBoard[randomCell.row][randomCell.col] = randomOption;
-    updateGridCellText(randomCell.row, randomCell.col, randomOption);
-    
-    // Hide the selected option
-    optionsGroup.children.forEach(panel => {
-        if (panel.userData.text === randomOption) {
-            panel.visible = false;
-            availableOptions.delete(randomOption);
-        }
-    });
-    
-    // Switch back to user's turn
-    isUserTurn = true;
-}
-
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -507,52 +452,12 @@ renderer.xr.addEventListener('sessionstart', () => {
             }
         }
     });
-    initGame(); // Initialize game state
 });
 
 renderer.xr.addEventListener('sessionend', () => {
     console.log('VR Session ended');
     gridGroup.position.set(0, 0, 0);
     optionsGroup.position.set(0, 0, 0);
-});
-
-// Handle VR controller select event
-let selectedOption = null;
-const controller = renderer.xr.getController(0);
-controller.addEventListener('select', () => {
-    if (!isUserTurn) return; // Only allow selection during user's turn
-    
-    if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
-            // Only allow selecting visible options
-            const panel = currentIntersect;
-            if (panel.visible) {
-                selectedOption = currentIntersect.userData.text;
-            }
-        } else if (currentIntersect.userData.type === 'cell') {
-            // If we have a selected option and cell is empty, update the cell
-            const { row, col } = currentIntersect.userData;
-            if (selectedOption && !gameBoard[row][col]) {
-                // Update game board
-                gameBoard[row][col] = selectedOption;
-                updateGridCellText(row, col, selectedOption);
-                
-                // Hide the selected option
-                optionsGroup.children.forEach(panel => {
-                    if (panel.userData.text === selectedOption) {
-                        panel.visible = false;
-                        availableOptions.delete(selectedOption);
-                    }
-                });
-                
-                selectedOption = null; // Clear selection
-                isUserTurn = false; // Switch turns
-                
-                // Machine takes turn after a delay
-                setTimeout(machineTurn, 1000);
-            }
-        }
-    }
 });
 
 // Animation loop
@@ -778,3 +683,32 @@ function updateOptionPanels() {
         panel.lookAt(camera.position);
     });
 }
+
+// Handle VR controller select event
+let selectedOption = null;
+let selectedPanel = null; // Keep track of the selected panel
+const controller = renderer.xr.getController(0);
+controller.addEventListener('select', () => {
+    if (currentIntersect) {
+        if (currentIntersect.userData.type === 'option') {
+            // Store selected option and its panel
+            selectedOption = currentIntersect.userData.text;
+            selectedPanel = currentIntersect; // Store the panel reference
+        } else if (currentIntersect.userData.type === 'cell') {
+            // If we have a selected option, update the cell
+            if (selectedOption) {
+                const { row, col } = currentIntersect.userData;
+                updateGridCellText(row, col, selectedOption);
+                
+                // Make the selected option panel invisible
+                if (selectedPanel) {
+                    selectedPanel.visible = false;
+                }
+                
+                // Clear selections
+                selectedOption = null;
+                selectedPanel = null;
+            }
+        }
+    }
+});
