@@ -413,6 +413,72 @@ function centerGrid() {
 centerButton.addEventListener('click', centerGrid);
 document.body.appendChild(centerButton);
 
+// Game state and turn button
+let turnButton = null;
+let isUserTurn = true;
+
+// Create turn button
+function createTurnButton() {
+    const geometry = new THREE.BoxGeometry(0.3, 0.1, 0.02);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    turnButton = new THREE.Mesh(geometry, material);
+    turnButton.position.set(0.5, 1.2, -1.5); // Position above the grid
+    turnButton.userData.type = 'turn_button';
+    turnButton.visible = false; // Initially hidden
+    scene.add(turnButton);
+    
+    // Add text "TURN" on the button
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 128;
+    canvas.height = 64;
+    
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'white';
+    context.font = 'bold 32px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('TURN', canvas.width/2, canvas.height/2);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const textMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    const textGeometry = new THREE.PlaneGeometry(0.28, 0.08);
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 0, 0.011); // Slightly in front of button
+    turnButton.add(textMesh);
+}
+
+// Machine's turn logic
+function makeMachineMove() {
+    // Get visible options
+    const visibleOptions = Array.from(optionsGroup.children).filter(panel => panel.visible);
+    if (visibleOptions.length === 0) return;
+
+    // Get empty cells
+    const emptyCells = [];
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            if (!gridTexts[row][col].sprite.visible) {
+                emptyCells.push({row, col});
+            }
+        }
+    }
+    if (emptyCells.length === 0) return;
+
+    // Make random move
+    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    // Place option
+    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
+    randomOption.visible = false;
+    
+    // Switch back to user's turn
+    isUserTurn = true;
+    turnButton.visible = false;
+}
+
 // Handle VR session start/end
 renderer.xr.addEventListener('sessionstart', () => {
     console.log('VR Session starting...');
@@ -460,62 +526,21 @@ renderer.xr.addEventListener('sessionend', () => {
     optionsGroup.position.set(0, 0, 0);
 });
 
-// Event-driven turn management
-const gameManager = {
-    isUserTurn: true,
-    switchTurn: function() {
-        this.isUserTurn = !this.isUserTurn;
-        if (!this.isUserTurn) {
-            // Machine's turn after 1 second
-            setTimeout(() => this.makeMachineMove(), 1000);
-        }
-    },
-    makeMachineMove: function() {
-        // Get visible options
-        const visibleOptions = [];
-        optionsGroup.children.forEach(panel => {
-            if (panel.visible) {
-                visibleOptions.push(panel);
-            }
-        });
-        if (visibleOptions.length === 0) return;
-
-        // Get empty cells
-        const emptyCells = [];
-        for (let row = 0; row < gridSize; row++) {
-            for (let col = 0; col < gridSize; col++) {
-                if (!gridTexts[row][col].sprite.visible) {
-                    emptyCells.push({row, col});
-                }
-            }
-        }
-        if (emptyCells.length === 0) return;
-
-        // Make random move
-        const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-
-        // Place option
-        updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
-        randomOption.visible = false;
-
-        // Switch back to user's turn
-        this.isUserTurn = true;
-    }
-};
-
 // Handle VR controller select event
 let selectedOption = null;
 let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
-    if (!gameManager.isUserTurn) return; // Ignore clicks during machine's turn
-    
     if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
+        if (currentIntersect.userData.type === 'turn_button') {
+            // Handle turn button click
+            if (!isUserTurn) {
+                makeMachineMove();
+            }
+        } else if (currentIntersect.userData.type === 'option' && isUserTurn) {
             selectedOption = currentIntersect.userData.text;
             selectedPanel = currentIntersect;
-        } else if (currentIntersect.userData.type === 'cell') {
+        } else if (currentIntersect.userData.type === 'cell' && isUserTurn) {
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
                 
@@ -527,12 +552,24 @@ controller.addEventListener('select', () => {
                     selectedOption = null;
                     selectedPanel = null;
                     
-                    // Switch to machine's turn
-                    gameManager.switchTurn();
+                    // Switch to machine's turn and show turn button
+                    isUserTurn = false;
+                    turnButton.visible = true;
                 }
             }
         }
     }
+});
+
+// Initialize VR
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.4, -0.8);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    createTurnButton(); // Create turn button when VR starts
 });
 
 // Animation loop
