@@ -460,45 +460,56 @@ renderer.xr.addEventListener('sessionend', () => {
     optionsGroup.position.set(0, 0, 0);
 });
 
-// Game state
-let isUserTurn = true;
-let lastTurnTime = 0;
+// Event-driven turn management
+const gameManager = {
+    isUserTurn: true,
+    switchTurn: function() {
+        this.isUserTurn = !this.isUserTurn;
+        if (!this.isUserTurn) {
+            // Machine's turn after 1 second
+            setTimeout(() => this.makeMachineMove(), 1000);
+        }
+    },
+    makeMachineMove: function() {
+        // Get visible options
+        const visibleOptions = [];
+        optionsGroup.children.forEach(panel => {
+            if (panel.visible) {
+                visibleOptions.push(panel);
+            }
+        });
+        if (visibleOptions.length === 0) return;
 
-// Machine's turn
-function machineTurn() {
-    // Get visible options
-    const visibleOptions = Array.from(optionsGroup.children).filter(panel => panel.visible);
-    if (visibleOptions.length === 0) return;
-
-    // Get empty cells
-    const emptyCells = [];
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            if (!gridTexts[row][col].sprite.visible) {
-                emptyCells.push({row, col});
+        // Get empty cells
+        const emptyCells = [];
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                if (!gridTexts[row][col].sprite.visible) {
+                    emptyCells.push({row, col});
+                }
             }
         }
-    }
-    if (emptyCells.length === 0) return;
+        if (emptyCells.length === 0) return;
 
-    // Make random move
-    const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
-    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-    
-    // Place option
-    updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
-    randomOption.visible = false;
-    
-    // Switch back to user's turn
-    isUserTurn = true;
-}
+        // Make random move
+        const randomOption = visibleOptions[Math.floor(Math.random() * visibleOptions.length)];
+        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+
+        // Place option
+        updateGridCellText(randomCell.row, randomCell.col, randomOption.userData.text);
+        randomOption.visible = false;
+
+        // Switch back to user's turn
+        this.isUserTurn = true;
+    }
+};
 
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null; // Keep track of the selected panel
+let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
-    if (!isUserTurn) return; // Ignore clicks during machine's turn
+    if (!gameManager.isUserTurn) return; // Ignore clicks during machine's turn
     
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
@@ -517,8 +528,7 @@ controller.addEventListener('select', () => {
                     selectedPanel = null;
                     
                     // Switch to machine's turn
-                    isUserTurn = false;
-                    lastTurnTime = Date.now();
+                    gameManager.switchTurn();
                 }
             }
         }
@@ -527,13 +537,58 @@ controller.addEventListener('select', () => {
 
 // Animation loop
 function animate() {
-    // Handle machine's turn after 1 second delay
-    if (!isUserTurn && Date.now() - lastTurnTime > 1000) {
-        machineTurn();
-    }
-    
-    renderer.setAnimationLoop(animate);
-    renderer.render(scene, camera);
+    renderer.setAnimationLoop(() => {
+        const time = Date.now() * 0.001;
+        
+        // Pulse the reticle
+        reticle.scale.setScalar(1 + Math.sin(time * 2) * 0.1);
+        
+        // Update raycaster
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        
+        // Check intersections with grid cells and options
+        const gridCells = gridGroup.children.filter(child => child.userData && child.userData.type === 'cell');
+        const optionPanels = optionsGroup.children[0]?.children.filter(child => child instanceof THREE.Mesh && child.material.map) || [];
+        
+        const intersectsGrid = raycaster.intersectObjects(gridCells);
+        const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        // Handle highlighting
+        if (intersectsGrid.length > 0) {
+            const intersect = intersectsGrid[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'grid') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'grid';
+                
+                gridHighlightFrame.position.copy(intersect.object.position);
+                gridHighlightFrame.visible = true;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
+            }
+        } else if (intersectsOptions.length > 0) {
+            const intersect = intersectsOptions[0];
+            if (currentIntersect !== intersect.object || currentHighlight !== 'option') {
+                currentIntersect = intersect.object;
+                currentHighlight = 'option';
+                
+                if (optionHighlightFrame) {
+                    optionHighlightFrame.position.copy(intersect.object.position);
+                    optionHighlightFrame.quaternion.copy(intersect.object.quaternion);
+                    optionHighlightFrame.visible = true;
+                }
+                gridHighlightFrame.visible = false;
+            }
+        } else {
+            if (currentIntersect) {
+                currentIntersect = null;
+                currentHighlight = null;
+                gridHighlightFrame.visible = false;
+                if (optionHighlightFrame) optionHighlightFrame.visible = false;
+            }
+        }
+        
+        updateOptionPanels();
+        renderer.render(scene, camera);
+    });
 }
 
 animate();
