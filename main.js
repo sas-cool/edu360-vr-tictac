@@ -684,8 +684,49 @@ function updateOptionPanels() {
     });
 }
 
-// Game state
+// Game state and turn button
+let turnButton = null;
 let isUserTurn = true;
+
+// Create turn button
+function createTurnButton() {
+    // Create button group to hold button and text
+    const buttonGroup = new THREE.Group();
+    // Position far right and slightly higher than grid
+    buttonGroup.position.set(2.0, 2.0, -1.5); 
+    buttonGroup.userData.type = 'turn_button';
+    buttonGroup.visible = false;
+    scene.add(buttonGroup);
+    
+    // Create large button background
+    const geometry = new THREE.BoxGeometry(0.8, 0.4, 0.05);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    turnButton = new THREE.Mesh(geometry, material);
+    buttonGroup.add(turnButton);
+    
+    // Add text "TURN" on the button
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 512; // Larger canvas for sharper text
+    canvas.height = 256;
+    
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'white';
+    context.font = 'bold 96px Arial'; // Much larger text
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('TURN', canvas.width/2, canvas.height/2);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const textMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    const textGeometry = new THREE.PlaneGeometry(0.75, 0.35);
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 0, 0.026); // Slightly in front of button
+    buttonGroup.add(textMesh);
+    
+    return buttonGroup;
+}
 
 // Machine's turn logic
 function makeMachineMove() {
@@ -719,20 +760,21 @@ function makeMachineMove() {
     
     // Switch back to user's turn
     isUserTurn = true;
+    turnButton.parent.visible = false;
 }
 
 // Handle VR controller select event
 let selectedOption = null;
-let selectedPanel = null;
+let selectedPanel = null; // Keep track of the selected panel
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
-    if (!isUserTurn) return; // Ignore clicks during machine's turn
-    
     if (currentIntersect) {
-        if (currentIntersect.userData.type === 'option') {
+        if (currentIntersect.userData.type === 'turn_button' && !isUserTurn) {
+            makeMachineMove();
+        } else if (currentIntersect.userData.type === 'option' && isUserTurn) {
             selectedOption = currentIntersect.userData.text;
             selectedPanel = currentIntersect;
-        } else if (currentIntersect.userData.type === 'cell') {
+        } else if (currentIntersect.userData.type === 'cell' && isUserTurn) {
             if (selectedOption) {
                 const { row, col } = currentIntersect.userData;
                 
@@ -744,13 +786,22 @@ controller.addEventListener('select', () => {
                     selectedOption = null;
                     selectedPanel = null;
                     
-                    // Switch to machine's turn
+                    // Switch to machine's turn and show turn button
                     isUserTurn = false;
-                    
-                    // Make machine's move after 1 second
-                    setTimeout(makeMachineMove, 1000);
+                    turnButton.parent.visible = true;
                 }
             }
         }
     }
+});
+
+// Initialize VR
+renderer.xr.addEventListener('sessionstart', () => {
+    console.log('VR Session starting...');
+    gridGroup.position.set(0, 1.6, -1.5);
+    optionsGroup.position.set(0, 0.4, -0.8);
+    loadOptions();
+    gridGroup.visible = true;
+    optionsGroup.visible = true;
+    turnButton = createTurnButton(); // Create turn button when VR starts
 });
