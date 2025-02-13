@@ -684,48 +684,48 @@ function updateOptionPanels() {
     });
 }
 
-// Game state and turn button
-let turnButton = null;
+// Game state
 let isUserTurn = true;
+let turnButtonGroup = null;
 
 // Create turn button
 function createTurnButton() {
-    // Create button group to hold button and text
-    const buttonGroup = new THREE.Group();
-    // Position far right and slightly higher than grid
-    buttonGroup.position.set(2.0, 2.0, -1.5); 
-    buttonGroup.userData.type = 'turn_button';
-    buttonGroup.visible = false;
-    scene.add(buttonGroup);
+    const group = new THREE.Group();
     
-    // Create large button background
-    const geometry = new THREE.BoxGeometry(0.8, 0.4, 0.05);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    turnButton = new THREE.Mesh(geometry, material);
-    buttonGroup.add(turnButton);
+    // Create very large button background
+    const geometry = new THREE.BoxGeometry(1.0, 0.5, 0.1); // Even bigger
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Bright red for visibility
+    const button = new THREE.Mesh(geometry, material);
+    group.add(button);
     
     // Add text "TURN" on the button
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.width = 512; // Larger canvas for sharper text
-    canvas.height = 256;
+    canvas.width = 1024; // Very high resolution
+    canvas.height = 512;
     
     context.fillStyle = 'black';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = 'white';
-    context.font = 'bold 96px Arial'; // Much larger text
+    context.font = 'bold 160px Arial'; // Huge text
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText('TURN', canvas.width/2, canvas.height/2);
     
     const texture = new THREE.CanvasTexture(canvas);
     const textMaterial = new THREE.MeshBasicMaterial({ map: texture });
-    const textGeometry = new THREE.PlaneGeometry(0.75, 0.35);
+    const textGeometry = new THREE.PlaneGeometry(0.95, 0.45);
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 0, 0.026); // Slightly in front of button
-    buttonGroup.add(textMesh);
+    textMesh.position.set(0, 0, 0.051); // Slightly in front
+    group.add(textMesh);
     
-    return buttonGroup;
+    // Position button above and to the right of grid
+    group.position.set(1.5, 1.6, -1.5); // Same height as grid, but to the right
+    group.userData.type = 'turn_button';
+    group.visible = false; // Initially hidden
+    
+    scene.add(group);
+    return group;
 }
 
 // Machine's turn logic
@@ -760,7 +760,7 @@ function makeMachineMove() {
     
     // Switch back to user's turn
     isUserTurn = true;
-    turnButton.parent.visible = false;
+    turnButtonGroup.visible = false;
 }
 
 // Handle VR controller select event
@@ -788,7 +788,7 @@ controller.addEventListener('select', () => {
                     
                     // Switch to machine's turn and show turn button
                     isUserTurn = false;
-                    turnButton.parent.visible = true;
+                    turnButtonGroup.visible = true;
                 }
             }
         }
@@ -803,5 +803,7 @@ renderer.xr.addEventListener('sessionstart', () => {
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
-    turnButton = createTurnButton(); // Create turn button when VR starts
+    
+    // Create turn button
+    turnButtonGroup = createTurnButton();
 });
