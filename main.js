@@ -726,12 +726,8 @@ let selectedOption = null;
 let selectedPanel = null;
 const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
-    if (!isUserTurn) {
-        // If it's machine's turn, any click triggers the machine move
-        makeMachineMove();
-        return;
-    }
-
+    if (!isUserTurn) return; // Ignore clicks during machine's turn
+    
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'option') {
             selectedOption = currentIntersect.userData.text;
@@ -750,6 +746,9 @@ controller.addEventListener('select', () => {
                     
                     // Switch to machine's turn
                     isUserTurn = false;
+                    
+                    // Make machine's move after 1 second
+                    setTimeout(makeMachineMove, 1000);
                 }
             }
         }
