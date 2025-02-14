@@ -684,7 +684,36 @@ function updateOptionPanels() {
     });
 }
 
-// Game state
+// Handle VR controller select event
+let selectedOption = null;
+let selectedPanel = null; // Keep track of the selected panel
+const controller = renderer.xr.getController(0);
+controller.addEventListener('select', () => {
+    if (currentIntersect) {
+        if (currentIntersect.userData.type === 'option') {
+            // Store selected option and its panel
+            selectedOption = currentIntersect.userData.text;
+            selectedPanel = currentIntersect; // Store the panel reference
+        } else if (currentIntersect.userData.type === 'cell') {
+            // If we have a selected option, update the cell
+            if (selectedOption) {
+                const { row, col } = currentIntersect.userData;
+                updateGridCellText(row, col, selectedOption);
+                
+                // Make the selected option panel invisible
+                if (selectedPanel) {
+                    selectedPanel.visible = false;
+                }
+                
+                // Clear selections
+                selectedOption = null;
+                selectedPanel = null;
+            }
+        }
+    }
+});
+
+// Game state and turn button
 let isUserTurn = true;
 let turnButtonGroup = null;
 
@@ -696,6 +725,7 @@ function createTurnButton() {
     const geometry = new THREE.BoxGeometry(1.0, 0.5, 0.1); // Even bigger
     const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Bright red for visibility
     const button = new THREE.Mesh(geometry, material);
+    button.userData.type = 'turn_button'; // Add type to the mesh itself
     group.add(button);
     
     // Add text "TURN" on the button
@@ -763,10 +793,38 @@ function makeMachineMove() {
     turnButtonGroup.visible = false;
 }
 
+// Setup raycaster for VR controller
+const controllerRaycaster = new THREE.Raycaster();
+let currentIntersect = null;
+
+function updateControllerRaycaster() {
+    if (!renderer.xr.isPresenting) return;
+    
+    const controller = renderer.xr.getController(0);
+    if (!controller) return;
+
+    // Get controller position and orientation
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(controller.matrixWorld);
+    controllerRaycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+    controllerRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+    // Check intersections with all interactive objects
+    const intersectObjects = [...gridCells, ...optionPanels];
+    if (turnButtonGroup && turnButtonGroup.visible) {
+        // Add both the button mesh and its parent group
+        turnButtonGroup.children.forEach(child => {
+            if (child instanceof THREE.Mesh) {
+                intersectObjects.push(child);
+            }
+        });
+    }
+    
+    const intersects = controllerRaycaster.intersectObjects(intersectObjects);
+    currentIntersect = intersects.length > 0 ? intersects[0].object : null;
+}
+
 // Handle VR controller select event
-let selectedOption = null;
-let selectedPanel = null; // Keep track of the selected panel
-const controller = renderer.xr.getController(0);
 controller.addEventListener('select', () => {
     if (currentIntersect) {
         if (currentIntersect.userData.type === 'turn_button' && !isUserTurn) {
@@ -803,7 +861,31 @@ renderer.xr.addEventListener('sessionstart', () => {
     loadOptions();
     gridGroup.visible = true;
     optionsGroup.visible = true;
-    
-    // Create turn button
     turnButtonGroup = createTurnButton();
 });
+
+// Animation loop
+function animate() {
+    renderer.setAnimationLoop(() => {
+        updateControllerRaycaster(); // Add controller raycaster update
+        
+        // Update raycaster
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        
+        // Check for intersections with grid cells and options
+        const intersectsGrid = raycaster.intersectObjects(gridCells);
+        const intersectsOptions = raycaster.intersectObjects(optionPanels);
+        
+        // If we're in VR, use the currentIntersect from controller
+        if (!renderer.xr.isPresenting) {
+            currentIntersect = null;
+            if (intersectsGrid.length) {
+                currentIntersect = intersectsGrid[0].object;
+            } else if (intersectsOptions.length) {
+                currentIntersect = intersectsOptions[0].object;
+            }
+        }
+        
+        renderer.render(scene, camera);
+    });
+}
